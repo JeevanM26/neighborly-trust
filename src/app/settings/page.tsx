@@ -3,6 +3,7 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { SUPPORTED_LANGUAGES } from '../../lib/i18n';
+import { useRouter } from 'next/navigation';
 import {
   User,
   Volume2,
@@ -19,6 +20,16 @@ import Image from 'next/image';
 export default function SettingsPage() {
   const { user, settings, t, setLanguage, toggleAppSounds, toggleVoiceGuidance, logout, speakText } =
     useApp();
+  const router = useRouter();
+
+  const handleLogoutClick = () => {
+    logout();
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('nt_user');
+      localStorage.removeItem('nt-customer-profile');
+      window.location.href = '/';
+    }
+  };
 
   return (
     <div className="p-4 space-y-4 pb-6">
@@ -180,8 +191,9 @@ export default function SettingsPage() {
 
       {/* Logout Button */}
       <button
-        onClick={logout}
-        className="w-full py-3.5 rounded-2xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs border border-red-200 flex items-center justify-center space-x-2 shadow-xs transition-colors"
+        onClick={handleLogoutClick}
+        type="button"
+        className="w-full py-3.5 rounded-2xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs border border-red-200 flex items-center justify-center space-x-2 shadow-xs transition-colors cursor-pointer active:scale-[0.98]"
       >
         <LogOut className="w-4 h-4" />
         <span>{t('logoutBtn')}</span>

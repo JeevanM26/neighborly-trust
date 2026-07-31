@@ -255,6 +255,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = () => {
     setUser(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('nt_user');
+      localStorage.removeItem('nt-customer-profile');
+      localStorage.removeItem('nt-online');
+    }
     playAudioFeedback('toggle');
     speakText('Logged out of Neighborly Trust');
   };

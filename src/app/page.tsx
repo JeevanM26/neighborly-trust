@@ -20,7 +20,7 @@ const NAVY_DEEP = "#072A4A";
 const SKY = "#EAF2FB";
 const GOLD = "#F5A623";
 
-const LANGS = ["English", "हिन्दी", "বাংলা", "తెలుగు", "मराठी", "தமிழ்", "ગુજરાતી", "ਕನ್ನಡ", "മലയാളം", "ਪੰਜਾਬੀ"];
+const LANGS = ["English", "हिन्दी", "বাংলা", "తెలుగు", "ਮਰਾਠੀ", "தமிழ்", "ગુજરાતી", "ਕನ್ನಡ", "മലയാളം", "ਪੰਜਾਬੀ"];
 
 const CATEGORIES = [
   { name: "Electrician", icon: Zap },
@@ -214,7 +214,7 @@ function colorFor(name: string) {
 function Avatar({ size = 36, name = "User", onClick }: { size?: number; name?: string; onClick?: () => void }) {
   const content = (
     <div
-      className="rounded-full flex items-center justify-center ring-2 ring-white shadow font-bold text-white flex-shrink-0"
+      className="rounded-full flex items-center justify-center ring-2 ring-white shadow font-bold text-white flex-shrink-0 cursor-pointer"
       style={{ width: size, height: size, background: colorFor(name), fontSize: size * 0.38 }}
     >
       {initials(name)}
@@ -256,7 +256,7 @@ function Stars({ rating }: { rating: number }) {
 
 function BottomNav({ tabs, active, onChange }: { tabs: { key: string; label: string; icon: React.ElementType }[]; active: string; onChange: (k: string) => void }) {
   return (
-    <div className="grid border-t border-slate-100 bg-white sticky bottom-0" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
+    <div className="grid border-t border-slate-100 bg-white sticky bottom-0 z-10" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
       {tabs.map((t) => {
         const Icon = t.icon;
         const isActive = active === t.key;
@@ -264,7 +264,7 @@ function BottomNav({ tabs, active, onChange }: { tabs: { key: string; label: str
           <button
             key={t.key}
             onClick={() => onChange(t.key)}
-            className="flex flex-col items-center gap-1 py-2.5"
+            className="flex flex-col items-center gap-1 py-2.5 cursor-pointer"
             style={{ color: isActive ? NAVY : "#94A3B8" }}
           >
             <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
@@ -289,7 +289,7 @@ function LangChips({ selected, onSelect, dark }: { selected: string; onSelect: (
             <button
               key={l}
               onClick={() => onSelect(l)}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer"
               style={
                 isSel
                   ? { background: NAVY, color: "white", borderColor: NAVY }
@@ -342,7 +342,7 @@ function DeveloperOwnerBoard({
   const estCommission = Math.round(totalEarnings * 0.08);
 
   return (
-    <div className="h-full flex flex-col bg-slate-900 text-slate-100 overflow-y-auto">
+    <div className="h-full flex flex-col bg-slate-900 text-slate-100 overflow-y-auto z-30">
       {/* Header */}
       <div className="px-4 py-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between sticky top-0 z-20">
         <div className="flex items-center gap-2">
@@ -352,7 +352,7 @@ function DeveloperOwnerBoard({
             <p className="text-[10px] text-slate-400">System Telemetry & Controls</p>
           </div>
         </div>
-        <button onClick={onClose} className="p-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white">
+        <button onClick={onClose} className="p-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white cursor-pointer">
           <X size={18} />
         </button>
       </div>
@@ -361,19 +361,19 @@ function DeveloperOwnerBoard({
       <div className="flex bg-slate-950 px-2 py-1.5 border-b border-slate-800 text-xs font-semibold gap-1">
         <button
           onClick={() => setTab("telemetry")}
-          className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1 transition ${tab === "telemetry" ? "bg-amber-500 text-slate-950 font-bold" : "text-slate-400 hover:bg-slate-800"}`}
+          className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1 transition cursor-pointer ${tab === "telemetry" ? "bg-amber-500 text-slate-950 font-bold" : "text-slate-400 hover:bg-slate-800"}`}
         >
           <Server size={13} /> Telemetry
         </button>
         <button
           onClick={() => setTab("inspector")}
-          className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1 transition ${tab === "inspector" ? "bg-amber-500 text-slate-950 font-bold" : "text-slate-400 hover:bg-slate-800"}`}
+          className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1 transition cursor-pointer ${tab === "inspector" ? "bg-amber-500 text-slate-950 font-bold" : "text-slate-400 hover:bg-slate-800"}`}
         >
           <Database size={13} /> Inspector ({bookings.length})
         </button>
         <button
           onClick={() => setTab("controls")}
-          className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1 transition ${tab === "controls" ? "bg-amber-500 text-slate-950 font-bold" : "text-slate-400 hover:bg-slate-800"}`}
+          className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1 transition cursor-pointer ${tab === "controls" ? "bg-amber-500 text-slate-950 font-bold" : "text-slate-400 hover:bg-slate-800"}`}
         >
           <ShieldAlert size={13} /> Controls
         </button>
@@ -468,21 +468,21 @@ function DeveloperOwnerBoard({
               
               <button
                 onClick={onInjectWorker}
-                className="w-full py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition"
+                className="w-full py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
               >
                 <Plus size={15} /> Inject Test Verified Provider
               </button>
 
               <button
                 onClick={() => notify("System Broadcast: Maintenance test notification sent to clients")}
-                className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition"
+                className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
               >
                 <Bell size={15} /> Broadcast Test Push Alert
               </button>
 
               <button
                 onClick={onPurgeStorage}
-                className="w-full py-2.5 rounded-lg bg-red-600/80 hover:bg-red-600 text-white font-bold text-xs flex items-center justify-center gap-2 transition"
+                className="w-full py-2.5 rounded-lg bg-red-600/80 hover:bg-red-600 text-white font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
               >
                 <Trash2 size={15} /> Purge & Reset Local App Cache
               </button>
@@ -568,10 +568,10 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
       <div className="h-full overflow-y-auto" style={{ background: SKY }}>
         <div className="px-6 pt-4 pb-2">
           <div className="flex bg-white rounded-full p-1 shadow-sm">
-            <button className="flex-1 py-2 rounded-full text-sm font-bold text-white" style={{ background: NAVY }}>
+            <button className="flex-1 py-2 rounded-full text-sm font-bold text-white cursor-pointer" style={{ background: NAVY }}>
               I'm a Customer
             </button>
-            <button onClick={goProvider} className="flex-1 py-2 rounded-full text-sm font-bold text-slate-500">
+            <button onClick={goProvider} className="flex-1 py-2 rounded-full text-sm font-bold text-slate-500 cursor-pointer">
               I'm a Worker
             </button>
           </div>
@@ -586,7 +586,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
           </div>
 
           <div className="bg-white rounded-2xl shadow-md p-5">
-            <button onClick={() => { setStep("details"); setOtp(["","","",""]); setError(""); }} className="flex items-center gap-1 text-xs font-semibold mb-3" style={{ color: NAVY }}>
+            <button onClick={() => { setStep("details"); setOtp(["","","",""]); setError(""); }} className="flex items-center gap-1 text-xs font-semibold mb-3 cursor-pointer" style={{ color: NAVY }}>
               <ChevronLeft size={14} /> Change number
             </button>
             <h2 className="text-lg font-bold text-center mb-1" style={{ color: NAVY_DEEP }}>Enter OTP</h2>
@@ -615,7 +615,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
             <button
               onClick={verifyOTP}
               disabled={loading || otp.join("").length < 4}
-              className="w-full py-3 rounded-xl text-white font-bold flex items-center justify-center gap-2 shadow active:opacity-80 disabled:opacity-50"
+              className="w-full py-3 rounded-xl text-white font-bold flex items-center justify-center gap-2 shadow active:opacity-80 disabled:opacity-50 cursor-pointer"
               style={{ background: NAVY_DEEP }}
             >
               {loading ? "Verifying…" : "Verify & Continue →"}
@@ -625,7 +625,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
               {countdown > 0 ? (
                 <p className="text-xs text-slate-400">Resend OTP in <strong>{countdown}s</strong></p>
               ) : (
-                <button onClick={sendOTP} className="text-xs font-semibold underline" style={{ color: NAVY }}>Resend OTP</button>
+                <button onClick={sendOTP} className="text-xs font-semibold underline cursor-pointer" style={{ color: NAVY }}>Resend OTP</button>
               )}
             </div>
           </div>
@@ -638,10 +638,10 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
     <div className="h-full overflow-y-auto" style={{ background: SKY }}>
       <div className="px-6 pt-4 pb-2">
         <div className="flex bg-white rounded-full p-1 shadow-sm">
-          <button className="flex-1 py-2 rounded-full text-sm font-bold text-white" style={{ background: NAVY }}>
+          <button className="flex-1 py-2 rounded-full text-sm font-bold text-white cursor-pointer" style={{ background: NAVY }}>
             I'm a Customer
           </button>
-          <button onClick={goProvider} className="flex-1 py-2 rounded-full text-sm font-bold text-slate-500">
+          <button onClick={goProvider} className="flex-1 py-2 rounded-full text-sm font-bold text-slate-500 cursor-pointer">
             I'm a Worker
           </button>
         </div>
@@ -697,7 +697,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
           <button
             onClick={sendOTP}
             disabled={loading}
-            className="w-full mt-1 py-3 rounded-xl text-white font-bold flex items-center justify-center gap-2 shadow active:opacity-80"
+            className="w-full mt-1 py-3 rounded-xl text-white font-bold flex items-center justify-center gap-2 shadow active:opacity-80 cursor-pointer"
             style={{ background: NAVY_DEEP }}
           >
             {loading ? "Sending OTP…" : <><Phone size={15} /> Send OTP →</>}
@@ -707,7 +707,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
             <div className="h-px bg-slate-200 flex-1" /><span className="text-xs text-slate-400">or</span><div className="h-px bg-slate-200 flex-1" />
           </div>
 
-          <button onClick={sendOTP} className="w-full py-3 rounded-xl font-bold border-2 active:opacity-80" style={{ borderColor: NAVY, color: NAVY }}>
+          <button onClick={sendOTP} className="w-full py-3 rounded-xl font-bold border-2 active:opacity-80 cursor-pointer" style={{ borderColor: NAVY, color: NAVY }}>
             Join as a Customer
           </button>
 
@@ -716,7 +716,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
 
         <button
           onClick={goProvider}
-          className="w-full mt-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2"
+          className="w-full mt-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer"
           style={{ background: "#DCEAFB", color: NAVY }}
         >
           <Wrench size={16} /> Join as a Service Provider
@@ -796,8 +796,8 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
       <div className="h-full overflow-y-auto" style={{ background: SKY }}>
         <div className="px-6 pt-4 pb-2">
           <div className="flex bg-white rounded-full p-1 shadow-sm">
-            <button onClick={goCustomer} className="flex-1 py-2 rounded-full text-sm font-bold text-slate-500">I'm a Customer</button>
-            <button className="flex-1 py-2 rounded-full text-sm font-bold text-white" style={{ background: NAVY }}>I'm a Worker</button>
+            <button onClick={goCustomer} className="flex-1 py-2 rounded-full text-sm font-bold text-slate-500 cursor-pointer">I'm a Customer</button>
+            <button className="flex-1 py-2 rounded-full text-sm font-bold text-white cursor-pointer" style={{ background: NAVY }}>I'm a Worker</button>
           </div>
         </div>
         <div className="px-6 pb-8">
@@ -809,7 +809,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
           </div>
 
           <div className="bg-white rounded-2xl shadow-md p-5 border" style={{ borderColor: NAVY_DEEP }}>
-            <button onClick={() => { setStep("details"); setOtp(["","","",""]); setError(""); }} className="flex items-center gap-1 text-xs font-semibold mb-3" style={{ color: NAVY }}>
+            <button onClick={() => { setStep("details"); setOtp(["","","",""]); setError(""); }} className="flex items-center gap-1 text-xs font-semibold mb-3 cursor-pointer" style={{ color: NAVY }}>
               <ChevronLeft size={14} /> Change number
             </button>
             <h2 className="text-xl font-extrabold text-center" style={{ color: NAVY_DEEP }}>Enter OTP</h2>
@@ -838,7 +838,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
             <button
               onClick={verifyOTP}
               disabled={loading || otp.join("").length < 4}
-              className="w-full py-3 rounded-xl text-white font-bold shadow active:opacity-80 disabled:opacity-50"
+              className="w-full py-3 rounded-xl text-white font-bold shadow active:opacity-80 disabled:opacity-50 cursor-pointer"
               style={{ background: NAVY_DEEP }}
             >
               {loading ? "Verifying…" : "Verify & Start Working →"}
@@ -848,7 +848,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
               {countdown > 0 ? (
                 <p className="text-xs text-slate-400">Resend OTP in <strong>{countdown}s</strong></p>
               ) : (
-                <button onClick={sendOTP} className="text-xs font-semibold underline" style={{ color: NAVY }}>Resend OTP</button>
+                <button onClick={sendOTP} className="text-xs font-semibold underline cursor-pointer" style={{ color: NAVY }}>Resend OTP</button>
               )}
             </div>
           </div>
@@ -861,10 +861,10 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
     <div className="h-full overflow-y-auto" style={{ background: SKY }}>
       <div className="px-6 pt-4 pb-2">
         <div className="flex bg-white rounded-full p-1 shadow-sm">
-          <button onClick={goCustomer} className="flex-1 py-2 rounded-full text-sm font-bold text-slate-500">
+          <button onClick={goCustomer} className="flex-1 py-2 rounded-full text-sm font-bold text-slate-500 cursor-pointer">
             I'm a Customer
           </button>
-          <button className="flex-1 py-2 rounded-full text-sm font-bold text-white" style={{ background: NAVY }}>
+          <button className="flex-1 py-2 rounded-full text-sm font-bold text-white cursor-pointer" style={{ background: NAVY }}>
             I'm a Worker
           </button>
         </div>
@@ -909,7 +909,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
           <button
             onClick={sendOTP}
             disabled={loading}
-            className="w-full mt-2 py-3 rounded-xl text-white font-bold shadow active:opacity-80"
+            className="w-full mt-2 py-3 rounded-xl text-white font-bold shadow active:opacity-80 cursor-pointer"
             style={{ background: NAVY_DEEP }}
           >
             {loading ? "Sending OTP…" : "Send OTP →"}
@@ -917,7 +917,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
 
           <p className="text-center text-sm mt-4">
             Looking for a service?{" "}
-            <button onClick={goCustomer} className="font-bold underline" style={{ color: NAVY }}>Customer Login</button>
+            <button onClick={goCustomer} className="font-bold underline cursor-pointer" style={{ color: NAVY }}>Customer Login</button>
           </p>
 
           <p className="text-center text-xs text-slate-400 mt-4 flex items-center justify-center gap-1">
@@ -967,7 +967,7 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile }: { onOpenWorke
         <div className="flex items-center justify-between mt-5 mb-2">
           <h3 className="font-bold text-slate-800">Categories</h3>
           {category && (
-            <button onClick={() => setCategory(null)} className="text-sm font-semibold" style={{ color: NAVY }}>
+            <button onClick={() => setCategory(null)} className="text-sm font-semibold cursor-pointer" style={{ color: NAVY }}>
               Clear filter
             </button>
           )}
@@ -979,7 +979,7 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile }: { onOpenWorke
               <button
                 key={c.name}
                 onClick={() => setCategory(isSel ? null : c.name)}
-                className="flex flex-col items-center gap-1.5 rounded-xl py-3 border-2 transition"
+                className="flex flex-col items-center gap-1.5 rounded-xl py-3 border-2 transition cursor-pointer"
                 style={isSel ? { background: NAVY, borderColor: NAVY } : { background: SKY, borderColor: "transparent" }}
               >
                 <c.icon size={20} color={isSel ? "white" : NAVY} />
@@ -1017,7 +1017,7 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile }: { onOpenWorke
             <button
               key={w.id}
               onClick={() => onOpenWorker(w)}
-              className="w-full flex gap-3 rounded-xl border border-slate-100 shadow-sm p-2.5 text-left"
+              className="w-full flex gap-3 rounded-xl border border-slate-100 shadow-sm p-2.5 text-left cursor-pointer"
             >
               <ServiceImage icon={w.icon} className="w-16 h-16 rounded-lg flex-shrink-0" iconSize={26} />
               <div className="flex-1 min-w-0">
@@ -1076,7 +1076,7 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify }: { onOpen
                 <button
                   key={t}
                   onClick={() => setTrade(t)}
-                  className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap"
+                  className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer"
                   style={isSel ? { background: NAVY, color: "white" } : { border: "1px solid #CBD5E1", color: "#475569" }}
                 >
                   {t}
@@ -1088,7 +1088,7 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify }: { onOpen
           <div className="space-y-3">
             {visibleWorkers.map((w) => (
               <div key={w.id} className="rounded-xl border border-slate-100 shadow-sm p-3">
-                <button onClick={() => onOpenWorker(w)} className="flex gap-3 text-left w-full">
+                <button onClick={() => onOpenWorker(w)} className="flex gap-3 text-left w-full cursor-pointer">
                   <ServiceImage icon={w.icon} className="w-14 h-14 rounded-full" iconSize={22} />
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-slate-800 text-sm">{w.name}</p>
@@ -1098,10 +1098,10 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify }: { onOpen
                   </div>
                 </button>
                 <div className="flex gap-2 mt-2.5">
-                  <button onClick={() => notify(`Calling ${w.name.split(" ")[0]}…`)} className="flex-1 py-2 rounded-lg text-white text-xs font-bold flex items-center justify-center gap-1 active:opacity-80" style={{ background: NAVY }}>
+                  <button onClick={() => notify(`Calling ${w.name.split(" ")[0]}…`)} className="flex-1 py-2 rounded-lg text-white text-xs font-bold flex items-center justify-center gap-1 active:opacity-80 cursor-pointer" style={{ background: NAVY }}>
                     <Phone size={13} /> Call Now
                   </button>
-                  <button onClick={() => notify(`Opening chat with ${w.name.split(" ")[0]}…`)} className="flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 border active:opacity-80" style={{ borderColor: NAVY, color: NAVY }}>
+                  <button onClick={() => notify(`Opening chat with ${w.name.split(" ")[0]}…`)} className="flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 border active:opacity-80 cursor-pointer" style={{ borderColor: NAVY, color: NAVY }}>
                     <MessageSquare size={13} /> Message
                   </button>
                 </div>
@@ -1143,10 +1143,10 @@ function WorkerProfile({ worker, onBack, onBook, profileImg, notify }: { worker:
 
         <div className="mt-4 rounded-xl p-4" style={{ background: SKY }}>
           <p className="text-sm text-slate-700 mb-3">Pricing and scheduling are negotiated directly with the worker.</p>
-          <button onClick={() => notify(`Calling ${worker.name.split(" ")[0]}…`)} className="w-full py-3 rounded-full text-white font-bold flex items-center justify-center gap-2 mb-2 active:opacity-80" style={{ background: NAVY_DEEP }}>
+          <button onClick={() => notify(`Calling ${worker.name.split(" ")[0]}…`)} className="w-full py-3 rounded-full text-white font-bold flex items-center justify-center gap-2 mb-2 active:opacity-80 cursor-pointer" style={{ background: NAVY_DEEP }}>
             <Phone size={16} /> Call {worker.name.split(" ")[0]}
           </button>
-          <button onClick={() => notify(`Opening chat with ${worker.name.split(" ")[0]}…`)} className="w-full py-3 rounded-full font-bold flex items-center justify-center gap-2 border-2 active:opacity-80" style={{ borderColor: NAVY_DEEP, color: NAVY_DEEP }}>
+          <button onClick={() => notify(`Opening chat with ${worker.name.split(" ")[0]}…`)} className="w-full py-3 rounded-full font-bold flex items-center justify-center gap-2 border-2 active:opacity-80 cursor-pointer" style={{ borderColor: NAVY_DEEP, color: NAVY_DEEP }}>
             <MessageSquare size={16} /> Send Message
           </button>
         </div>
@@ -1159,7 +1159,7 @@ function WorkerProfile({ worker, onBack, onBook, profileImg, notify }: { worker:
 
         <button
           onClick={onBook}
-          className="w-full mt-4 py-3.5 rounded-full text-white font-bold shadow-lg"
+          className="w-full mt-4 py-3.5 rounded-full text-white font-bold shadow-lg cursor-pointer"
           style={{ background: NAVY }}
         >
           Book {worker.name.split(" ")[0]}
@@ -1188,7 +1188,7 @@ function BookingConfirm({ worker, onDone }: { worker: any; onDone: () => void })
           </div>
         </div>
       </div>
-      <button onClick={onDone} className="w-full max-w-xs mt-6 py-3 rounded-full text-white font-bold" style={{ background: NAVY_DEEP }}>
+      <button onClick={onDone} className="w-full max-w-xs mt-6 py-3 rounded-full text-white font-bold cursor-pointer" style={{ background: NAVY_DEEP }}>
         Back to Bookings
       </button>
     </div>
@@ -1212,7 +1212,7 @@ function RateWorkerCard({ worker, existingRating, onSubmit }: { worker: any; exi
       <p className="text-xs text-slate-500 mb-2">How was the work {worker.name.split(" ")[0]} did for you?</p>
       <div className="flex items-center gap-1 mb-3">
         {[1, 2, 3, 4, 5].map((n) => (
-          <button key={n} onClick={() => setRating(n)} onMouseEnter={() => setHover(n)} onMouseLeave={() => setHover(0)} aria-label={`Rate ${n} stars`}>
+          <button key={n} onClick={() => setRating(n)} onMouseEnter={() => setHover(n)} onMouseLeave={() => setHover(0)} aria-label={`Rate ${n} stars`} className="cursor-pointer">
             <Star size={26} className={(hover || rating) >= n ? "text-amber-500" : "text-slate-200"} fill="currentColor" strokeWidth={0} />
           </button>
         ))}
@@ -1220,7 +1220,7 @@ function RateWorkerCard({ worker, existingRating, onSubmit }: { worker: any; exi
       <button
         disabled={rating === 0}
         onClick={() => onSubmit(rating)}
-        className="w-full py-2.5 rounded-lg text-white text-sm font-bold disabled:opacity-40"
+        className="w-full py-2.5 rounded-lg text-white text-sm font-bold disabled:opacity-40 cursor-pointer"
         style={{ background: NAVY_DEEP }}
       >
         Submit Rating
@@ -1258,7 +1258,7 @@ function MyBookings({ bookings, onMarkComplete, onRate }: { bookings: any[]; onM
               {b.status === "Pending Confirmation" && (
                 <button
                   onClick={() => onMarkComplete(b.id)}
-                  className="w-full mt-3 py-2 rounded-lg text-xs font-bold border-2"
+                  className="w-full mt-3 py-2 rounded-lg text-xs font-bold border-2 cursor-pointer"
                   style={{ borderColor: NAVY, color: NAVY }}
                 >
                   Mark Job as Completed
@@ -1307,7 +1307,7 @@ function ProfileEditScreen({ onBack, profile, onSave }: { onBack: () => void; pr
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full py-3.5 rounded-full text-white font-bold shadow disabled:opacity-60"
+          className="w-full py-3.5 rounded-full text-white font-bold shadow disabled:opacity-60 cursor-pointer"
           style={{ background: NAVY_DEEP }}
         >
           {saving ? "Saving…" : "Save Changes"}
@@ -1333,7 +1333,7 @@ function LanguageScreen({ onBack, selected, onSelect }: { onBack: () => void; se
               <button
                 key={l}
                 onClick={() => onSelect(l)}
-                className="py-3 rounded-xl text-sm font-bold border-2 flex items-center justify-center gap-2"
+                className="py-3 rounded-xl text-sm font-bold border-2 flex items-center justify-center gap-2 cursor-pointer"
                 style={isSel ? { background: NAVY, borderColor: NAVY, color: "white" } : { borderColor: "#CBD5E1", color: "#334155" }}
               >
                 {isSel && <CheckCircle2 size={15} />} {l}
@@ -1346,7 +1346,7 @@ function LanguageScreen({ onBack, selected, onSelect }: { onBack: () => void; se
   );
 }
 
-function NotificationsScreen({ onBack }: { onBack: () => void }) {
+function NotificationsScreen({ onBack, notify }: { onBack: () => void; notify?: (m: string) => void }) {
   const [alerts, setAlerts] = useState(true);
   const [sms, setSms] = useState(true);
   const [email, setEmail] = useState(false);
@@ -1356,13 +1356,13 @@ function NotificationsScreen({ onBack }: { onBack: () => void }) {
         <p className="font-bold text-sm text-slate-800">{title}</p>
         <p className="text-xs text-slate-500">{sub}</p>
       </div>
-      <button
-        onClick={() => set(!on)}
-        className="w-12 h-7 rounded-full flex items-center px-0.5 flex-shrink-0"
+      <div
+        onClick={() => { const next = !on; set(next); if (notify) notify(`${title} ${next ? 'enabled' : 'disabled'}`); }}
+        className="w-12 h-7 rounded-full flex items-center px-0.5 flex-shrink-0 cursor-pointer transition"
         style={{ background: on ? NAVY : "#E2E8F0", justifyContent: on ? "flex-end" : "flex-start" }}
       >
         <span className="w-6 h-6 bg-white rounded-full shadow" />
-      </button>
+      </div>
     </div>
   );
   return (
@@ -1377,7 +1377,7 @@ function NotificationsScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
-function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwner }: { onLogout: () => void; profile: any; onSaveProfile: (p: any) => void; onOpenBookings: () => void; onOpenOwner: () => void; }) {
+function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwner, notify }: { onLogout: () => void; profile: any; onSaveProfile: (p: any) => void; onOpenBookings: () => void; onOpenOwner: () => void; notify?: (m: string) => void; }) {
   const [view, setView] = useState("main");
   const [sound, setSound] = useState(true);
   const [voice, setVoice] = useState(false);
@@ -1393,17 +1393,21 @@ function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwne
     }
   };
 
-  const Toggle = ({ on, set }: { on: boolean; set: (v: boolean) => void }) => (
-    <button
-      onClick={() => set(!on)}
-      className="w-12 h-7 rounded-full flex items-center px-0.5 transition"
+  const Toggle = ({ on, set, label }: { on: boolean; set: (v: boolean) => void; label: string }) => (
+    <div
+      onClick={(e) => { e.stopPropagation(); const next = !on; set(next); if (notify) notify(`${label} turned ${next ? 'ON' : 'OFF'}`); }}
+      className="w-12 h-7 rounded-full flex items-center px-0.5 cursor-pointer transition"
       style={{ background: on ? NAVY : "#E2E8F0", justifyContent: on ? "flex-end" : "flex-start" }}
     >
       <span className="w-6 h-6 bg-white rounded-full shadow" />
-    </button>
+    </div>
   );
+
   const Row = ({ icon: Icon, title, sub, right, onClick }: { icon: React.ElementType; title: string; sub: string; right?: React.ReactNode; onClick?: () => void }) => (
-    <button onClick={onClick} disabled={!onClick} className="w-full flex items-center gap-3 py-3 text-left">
+    <div
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 py-3 text-left ${onClick ? 'cursor-pointer hover:bg-slate-50 active:bg-slate-100 rounded-xl px-1 transition' : ''}`}
+    >
       <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: NAVY }}>
         <Icon size={18} color="white" />
       </div>
@@ -1412,13 +1416,14 @@ function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwne
         <p className="text-xs text-slate-500">{sub}</p>
       </div>
       {right}
-    </button>
+    </div>
   );
+
   const Section = ({ title }: { title: string }) => <p className="text-xs font-bold text-slate-400 mt-5 mb-1 tracking-wide">{title}</p>;
 
   if (view === "profile") return <ProfileEditScreen onBack={() => setView("main")} profile={profile} onSave={onSaveProfile} />;
-  if (view === "language") return <LanguageScreen onBack={() => setView("main")} selected={lang} onSelect={(l) => { setLang(l); setView("main"); }} />;
-  if (view === "notifications") return <NotificationsScreen onBack={() => setView("main")} />;
+  if (view === "language") return <LanguageScreen onBack={() => setView("main")} selected={lang} onSelect={(l) => { setLang(l); setView("main"); if (notify) notify(`Language set to ${l}`); }} />;
+  if (view === "notifications") return <NotificationsScreen onBack={() => setView("main")} notify={notify} />;
 
   return (
     <div className="h-full flex flex-col bg-white">
@@ -1430,9 +1435,9 @@ function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwne
         <Row icon={Globe} title="Language Preference" sub="English, Hindi, Marathi, & more" onClick={() => setView("language")} right={<span className="text-sm text-slate-400">{lang} ›</span>} />
 
         <Section title="AUDIO & ACCESSIBILITY" />
-        <Row icon={Volume2} title="App Sounds" sub="Feedback for clicks and actions" right={<Toggle on={sound} set={setSound} />} />
+        <Row icon={Volume2} title="App Sounds" sub="Feedback for clicks and actions" onClick={() => { const next = !sound; setSound(next); if (notify) notify(`App Sounds turned ${next ? 'ON' : 'OFF'}`); }} right={<Toggle on={sound} set={setSound} label="App Sounds" />} />
         <div className="h-px bg-slate-100" />
-        <Row icon={Mic} title="Voice Guidance" sub="Assistance for rural & varied literacy" right={<Toggle on={voice} set={setVoice} />} />
+        <Row icon={Mic} title="Voice Guidance" sub="Assistance for rural & varied literacy" onClick={() => { const next = !voice; setVoice(next); if (notify) notify(`Voice Guidance turned ${next ? 'ON' : 'OFF'}`); }} right={<Toggle on={voice} set={setVoice} label="Voice Guidance" />} />
 
         <Section title="PREFERENCES" />
         <Row icon={Bell} title="Notifications" sub="Alerts, SMS, and Email" onClick={() => setView("notifications")} right={<span className="text-slate-300">›</span>} />
@@ -1477,7 +1482,7 @@ function PostService({ onBack, onPost }: { onBack: () => void; onPost: (l: any) 
             <button
               key={c.name}
               onClick={() => setService(c.name)}
-              className="flex flex-col items-center gap-1.5 rounded-xl py-3 border-2"
+              className="flex flex-col items-center gap-1.5 rounded-xl py-3 border-2 cursor-pointer"
               style={service === c.name ? { background: NAVY, borderColor: NAVY } : { background: SKY, borderColor: "transparent" }}
             >
               <c.icon size={20} color={service === c.name ? "white" : NAVY} />
@@ -1509,7 +1514,7 @@ function PostService({ onBack, onPost }: { onBack: () => void; onPost: (l: any) 
           </div>
           <button
             onClick={() => setShareLoc(!shareLoc)}
-            className="w-12 h-7 rounded-full flex items-center px-0.5 flex-shrink-0"
+            className="w-12 h-7 rounded-full flex items-center px-0.5 flex-shrink-0 cursor-pointer"
             style={{ background: shareLoc ? NAVY : "#CBD5E1", justifyContent: shareLoc ? "flex-end" : "flex-start" }}
           >
             <span className="w-6 h-6 bg-white rounded-full shadow" />
@@ -1519,7 +1524,7 @@ function PostService({ onBack, onPost }: { onBack: () => void; onPost: (l: any) 
         <button
           disabled={!service}
           onClick={() => onPost({ service, rate: sanitizeText(rate) || "Ask for rate", desc: sanitizeText(desc) || "No description added.", shareLoc })}
-          className="w-full mt-6 py-3.5 rounded-full text-white font-bold shadow disabled:opacity-40"
+          className="w-full mt-6 py-3.5 rounded-full text-white font-bold shadow disabled:opacity-40 cursor-pointer"
           style={{ background: NAVY_DEEP }}
         >
           Post Service
@@ -1564,7 +1569,7 @@ function MyListings({ listings, online, onRemove, onAdd }: { listings: any[]; on
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <p className="font-bold text-sm text-slate-800">{l.service}</p>
-                        <button onClick={() => onRemove(i)}><Trash2 size={15} className="text-slate-300" /></button>
+                        <button onClick={() => onRemove(i)} className="cursor-pointer"><Trash2 size={15} className="text-slate-300" /></button>
                       </div>
                       <p className="text-sm font-semibold" style={{ color: NAVY }}>₹{l.rate}</p>
                       <p className="text-xs text-slate-500 mt-1">{l.desc}</p>
@@ -1584,7 +1589,7 @@ function MyListings({ listings, online, onRemove, onAdd }: { listings: any[]; on
 
         <button
           onClick={onAdd}
-          className="w-full mt-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 border-2 border-dashed"
+          className="w-full mt-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 border-2 border-dashed cursor-pointer"
           style={{ borderColor: NAVY, color: NAVY }}
         >
           <Plus size={16} /> Post a New Service
@@ -1614,10 +1619,10 @@ function ProviderDashboard({ onOpenSettings, profileImg, online, setOnline, list
           <span className="font-extrabold flex items-center gap-1"><ShieldCheck size={18} /> Neighborly Trust</span>
         </div>
         <div className="flex items-center gap-2.5">
-          <button onClick={() => notify("No new notifications")} aria-label="Notifications" className="p-1 rounded-lg hover:bg-white/10"><Bell size={19} /></button>
-          <button onClick={onOpenSettings} aria-label="Settings"><Avatar size={28} name={profileImg} /></button>
+          <button onClick={() => notify("No new notifications")} aria-label="Notifications" className="p-1 rounded-lg hover:bg-white/10 cursor-pointer"><Bell size={19} /></button>
+          <button onClick={onOpenSettings} aria-label="Settings" className="cursor-pointer"><Avatar size={28} name={profileImg} /></button>
           {onLogout && (
-            <button onClick={onLogout} aria-label="Log Out" className="p-1 rounded-lg hover:bg-white/10 text-red-200 transition" title="Log Out">
+            <button onClick={onLogout} aria-label="Log Out" className="p-1 rounded-lg hover:bg-white/10 text-red-200 transition cursor-pointer" title="Log Out">
               <LogOut size={18} />
             </button>
           )}
@@ -1632,7 +1637,7 @@ function ProviderDashboard({ onOpenSettings, profileImg, online, setOnline, list
           </div>
           <button
             onClick={() => setOnline(!online)}
-            className="w-14 h-8 rounded-full flex items-center px-1 transition"
+            className="w-14 h-8 rounded-full flex items-center px-1 transition cursor-pointer"
             style={{ background: online ? "#16A34A" : "#E2E8F0", justifyContent: online ? "flex-end" : "flex-start" }}
           >
             <span className="w-6 h-6 bg-white rounded-full shadow" />
@@ -1675,7 +1680,7 @@ function ProviderDashboard({ onOpenSettings, profileImg, online, setOnline, list
 
         <div className="flex items-center justify-between mt-5 mb-2">
           <p className="font-bold text-slate-800">Pending Requests</p>
-          <button onClick={onOpenListings} className="text-xs font-semibold" style={{ color: NAVY }}>View All ({jobs.length})</button>
+          <button onClick={onOpenListings} className="text-xs font-semibold cursor-pointer" style={{ color: NAVY }}>View All ({jobs.length})</button>
         </div>
         {jobs.length === 0 ? (
           <div className="bg-white rounded-xl p-4 text-center text-sm text-slate-400">No pending requests right now.</div>
@@ -1688,8 +1693,8 @@ function ProviderDashboard({ onOpenSettings, profileImg, online, setOnline, list
               <p className="text-xs text-slate-500">{j.price} • {j.tag}</p>
               <p className="text-[10px] text-slate-400">{j.loc}</p>
               <div className="flex gap-2 mt-2">
-                <button onClick={() => respondJob(j.id, true)} className="flex-1 py-1.5 rounded-lg text-white text-xs font-bold active:opacity-80" style={{ background: NAVY }}>Accept</button>
-                <button onClick={() => respondJob(j.id, false)} className="flex-1 py-1.5 rounded-lg text-xs font-bold border active:opacity-80" style={{ borderColor: "#DC2626", color: "#DC2626" }}>Decline</button>
+                <button onClick={() => respondJob(j.id, true)} className="flex-1 py-1.5 rounded-lg text-white text-xs font-bold active:opacity-80 cursor-pointer" style={{ background: NAVY }}>Accept</button>
+                <button onClick={() => respondJob(j.id, false)} className="flex-1 py-1.5 rounded-lg text-xs font-bold border active:opacity-80 cursor-pointer" style={{ borderColor: "#DC2626", color: "#DC2626" }}>Decline</button>
               </div>
             </div>
           ))}
@@ -1698,7 +1703,7 @@ function ProviderDashboard({ onOpenSettings, profileImg, online, setOnline, list
 
         <div className="flex items-center justify-between mt-5 mb-2">
           <p className="font-bold text-slate-800">Activity & Hours</p>
-          <button onClick={() => notify("Weekly report downloading…")} className="text-xs font-semibold" style={{ color: NAVY }}>Download Report</button>
+          <button onClick={() => notify("Weekly report downloading…")} className="text-xs font-semibold cursor-pointer" style={{ color: NAVY }}>Download Report</button>
         </div>
         <div className="rounded-xl text-white p-3.5 text-center mb-2" style={{ background: NAVY }}>
           <p className="font-extrabold text-sm">WEEKLY TOTAL: 38h 45m</p>
@@ -1712,7 +1717,7 @@ function ProviderDashboard({ onOpenSettings, profileImg, online, setOnline, list
                   <p className="font-bold text-sm text-slate-800">{d.d}</p>
                   <p className="text-xs text-slate-400">{d.tasks}</p>
                 </div>
-                <button onClick={() => notify(`${d.d.split(",")[0]}: ${d.tasks}`)} className="text-xs font-bold" style={{ color: NAVY }}>VIEW DETAILS</button>
+                <button onClick={() => notify(`${d.d.split(",")[0]}: ${d.tasks}`)} className="text-xs font-bold cursor-pointer" style={{ color: NAVY }}>VIEW DETAILS</button>
               </div>
               <div className="h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
                 <div className="h-full rounded-full" style={{ width: `${d.pct}%`, background: NAVY }} />
@@ -1752,6 +1757,11 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('nt_user');
+      localStorage.removeItem('nt-customer-profile');
+      localStorage.removeItem('nt-online');
+    }
     setMode("login");
     setTab("find");
     setProviderTab("dashboard");
@@ -1909,6 +1919,7 @@ export default function App() {
           onLogout={handleLogout}
           onOpenBookings={() => setProviderTab("listings")}
           onOpenOwner={() => setShowOwnerPinModal(true)}
+          notify={notify}
         />
       );
     }
@@ -1956,6 +1967,7 @@ export default function App() {
           onLogout={handleLogout}
           onOpenBookings={() => setTab("bookings")}
           onOpenOwner={() => setShowOwnerPinModal(true)}
+          notify={notify}
         />
       );
     }
@@ -1999,13 +2011,13 @@ export default function App() {
               <div className="flex gap-2">
                 <button
                   onClick={() => { setShowOwnerPinModal(false); setPinError(""); setOwnerPinInput(""); }}
-                  className="flex-1 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold"
+                  className="flex-1 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleOwnerAuth}
-                  className="flex-1 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold"
+                  className="flex-1 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold cursor-pointer"
                 >
                   Access
                 </button>
