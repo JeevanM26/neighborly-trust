@@ -1,0 +1,15 @@
+{
+  "short_name": "NeighborlyTrust",
+  "name": "Neighborly Trust — Rural Service Connect",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0F3E99",
+  "theme_color": "#0F3E99",
+  "display": "standalone"
+}
