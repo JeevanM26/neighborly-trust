@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ShieldCheck, IndianRupee, Star, ChevronLeft, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, IndianRupee, Star, ChevronLeft, Lock, Key } from 'lucide-react';
 import { formatINR } from '../../lib/commission';
 
 interface MockFeaturedProvider {
@@ -13,6 +13,10 @@ interface MockFeaturedProvider {
 }
 
 export default function AdminPage() {
+  const [authenticated, setAuthenticated] = useState(false);
+  const [pin, setPin] = useState('');
+  const [pinError, setPinError] = useState('');
+
   const [totalCommission, setTotalCommission] = useState(1280.00); // ₹1,280 collected
   const [totalBookingsCount, setTotalBookingsCount] = useState(15);
   const [providers, setProviders] = useState<MockFeaturedProvider[]>([
@@ -22,11 +26,65 @@ export default function AdminPage() {
     { id: '4', name: 'Meena Kulkarni', category: 'Home Clean', featured: false },
   ]);
 
+  const handlePinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Default Admin Passcode: 8899
+    if (pin === '8899' || pin === 'admin') {
+      setAuthenticated(true);
+      setPinError('');
+    } else {
+      setPinError('Incorrect Admin Passcode. Access denied.');
+    }
+  };
+
   const toggleFeatured = (id: string) => {
     setProviders((prev) =>
       prev.map((p) => (p.id === id ? { ...p, featured: !p.featured } : p))
     );
   };
+
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans">
+        <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl space-y-6 text-center">
+          <div className="w-16 h-16 bg-blue-900 rounded-2xl flex items-center justify-center mx-auto shadow-lg text-white">
+            <Lock className="w-8 h-8" />
+          </div>
+          <div>
+            <h1 className="text-xl font-extrabold text-slate-900">Protected Admin Access</h1>
+            <p className="text-xs text-slate-500 mt-1">Enter your 4-digit master admin passcode to view monetization & featured listings.</p>
+          </div>
+
+          <form onSubmit={handlePinSubmit} className="space-y-4">
+            <div className="relative">
+              <Key className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="password"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                placeholder="Enter Passcode (e.g. 8899)"
+                maxLength={8}
+                required
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-blue-900"
+              />
+            </div>
+            {pinError && <p className="text-xs font-bold text-red-600">{pinError}</p>}
+
+            <button
+              type="submit"
+              className="w-full py-3.5 rounded-xl bg-blue-900 hover:bg-blue-950 text-white font-bold text-sm shadow-md"
+            >
+              Authenticate →
+            </button>
+          </form>
+
+          <Link href="/" className="inline-block text-xs font-bold text-slate-400 hover:underline">
+            ← Return to Main Application
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 sm:p-8 font-sans">
@@ -44,9 +102,12 @@ export default function AdminPage() {
               <p className="text-xs text-slate-400">Neighborly Trust Platform Commission & Featured Subscriptions</p>
             </div>
           </div>
-          <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-400/30 px-3 py-1 rounded-full font-bold">
-            Protected Admin Route
-          </span>
+          <button
+            onClick={() => setAuthenticated(false)}
+            className="text-xs bg-red-500/20 text-red-300 border border-red-400/30 px-3 py-1 rounded-full font-bold hover:bg-red-500/30"
+          >
+            Lock Dashboard
+          </button>
         </div>
 
         {/* Financial Metrics Cards */}
