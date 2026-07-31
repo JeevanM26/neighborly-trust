@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
   ChevronLeft, Search, Zap, Wrench, Hammer, Home as HomeIcon, Bell,
   User, Star, ShieldCheck, Phone, MessageSquare, MapPin, Calendar,
@@ -12,17 +13,13 @@ import { calculateCommission, formatINR, sortProvidersByDistanceAndFeatured, dis
 import { ProviderProfile, Booking } from '../lib/types';
 import { supabase } from '../lib/supabase';
 
-/* ---------------------------------------------------------
-   NEIGHBORLY TRUST — Main Production Application Component
-   Palette: Navy #0B3D66 / Deep Navy #072A4A / Sky tint #EAF2FB / Gold #F5A623
---------------------------------------------------------- */
+// Dynamically import InteractiveMap without SSR for Leaflet compatibility
+const InteractiveMap = dynamic(() => import('../components/InteractiveMap'), { ssr: false });
 
 const NAVY = "#0B3D66";
 const NAVY_DEEP = "#072A4A";
 const SKY = "#EAF2FB";
 const GOLD = "#F5A623";
-
-const LANGS = ["English", "हिन्दी", "বাংলা", "తెలుగు", "मराठी", "தமிழ்", "ગુજરાતી", "ಕನ್ನಡ", "മലയാളം", "ਪੰਜਾਬੀ"];
 
 const CATEGORIES = [
   { name: "Electrician", icon: Zap },
@@ -76,19 +73,22 @@ async function reverseGeocode(lat: number, lng: number) {
   }
 }
 
+/** Continuous real-time GPS tracking using navigator.geolocation.watchPosition */
 function useUserLocation() {
   const [loc, setLoc] = useState(DEFAULT_LOCATION);
   const [status, setStatus] = useState<"loading" | "granted" | "denied">("loading");
   const [placeName, setPlaceName] = useState<string | null>(null);
 
-  const request = () => {
+  useEffect(() => {
     if (typeof window === "undefined" || !navigator.geolocation) {
       setLoc(DEFAULT_LOCATION);
       setStatus("denied");
       return;
     }
+
     setStatus("loading");
-    navigator.geolocation.getCurrentPosition(
+
+    const watchId = navigator.geolocation.watchPosition(
       async (pos) => {
         const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setLoc(next);
@@ -100,39 +100,36 @@ function useUserLocation() {
         setLoc(DEFAULT_LOCATION);
         setStatus("denied");
       },
-      { timeout: 8000, maximumAge: 60000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
     );
-  };
 
-  useEffect(() => { request(); }, []);
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
 
-  return { loc, status, placeName, retry: request };
+  return { loc, status, placeName };
 }
 
-function LocationBanner({ status, placeName, retry }: { status: string; placeName: string | null; retry: () => void }) {
+function LocationBanner({ status, placeName }: { status: string; placeName: string | null }) {
   if (status === "granted") {
     return (
       <div className="flex items-center gap-1.5 text-xs font-semibold mt-2 text-emerald-700">
-        <Navigation size={13} />
-        {placeName ? `Showing workers near ${placeName}` : "Showing workers near your current location"}
+        <Navigation size={13} className="animate-pulse text-emerald-600" />
+        {placeName ? `Live GPS active near ${placeName}` : "Live GPS active"}
       </div>
     );
   }
   if (status === "loading") {
     return (
       <div className="flex items-center gap-1.5 text-xs font-semibold mt-2 text-slate-400">
-        <Navigation size={13} className="animate-pulse" /> Finding your location…
+        <Navigation size={13} className="animate-pulse" /> Connecting live GPS…
       </div>
     );
   }
   return (
-    <button
-      onClick={retry}
-      className="w-full flex items-center gap-2 rounded-lg mt-2 px-3 py-2 text-xs font-semibold bg-amber-100 text-amber-900"
-    >
+    <div className="w-full flex items-center gap-2 rounded-lg mt-2 px-3 py-2 text-xs font-semibold bg-amber-100 text-amber-900">
       <Navigation size={13} className="flex-shrink-0" />
-      <span className="flex-1 text-left">Location off — showing default area. Tap to enable for nearby results.</span>
-    </button>
+      <span className="flex-1 text-left">Location off — showing Shivamogga area. Enable GPS for live tracking.</span>
+    </div>
   );
 }
 
@@ -263,7 +260,6 @@ function CustomerLogin({ onLogin, goProvider, notify }: { onLogin: (phone: strin
             <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" type="password" className="w-full outline-none text-sm" />
           </label>
 
-          {/* DPDP Act Privacy Notice and Consent Checkbox */}
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-3 text-xs text-slate-600">
             <label className="flex items-start gap-2 cursor-pointer">
               <input
@@ -374,7 +370,7 @@ export default function App() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [justBooked, setJustBooked] = useState<ProviderProfile | null>(null);
 
-  const { loc, status, placeName, retry } = useUserLocation();
+  const { loc, status, placeName } = useUserLocation();
 
   const notify = (msg: string) => {
     setToast(msg);
@@ -418,7 +414,7 @@ export default function App() {
 
   const customerTabs = [
     { key: "find", label: "Find Service", icon: Search },
-    { key: "map", label: "Nearby", icon: MapPin },
+    { key: "map", label: "Nearby Map", icon: MapPin },
     { key: "bookings", label: "My Bookings", icon: Calendar },
     { key: "profile", label: "Profile", icon: User },
   ];
@@ -514,7 +510,7 @@ export default function App() {
                     <span className="font-extrabold text-lg" style={{ color: NAVY }}>Neighborly Trust</span>
                     <Avatar size={34} name="Customer" />
                   </div>
-                  <LocationBanner status={status} placeName={placeName} retry={retry} />
+                  <LocationBanner status={status} placeName={placeName} />
 
                   <h2 className="text-lg font-extrabold text-slate-900">Verified Providers Nearby</h2>
 
@@ -547,6 +543,25 @@ export default function App() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {!selectedWorker && !justBooked && tab === "map" && (
+                <div className="p-4 space-y-3 h-full flex flex-col">
+                  <TopBar title="Interactive Nearby Map" />
+                  <LocationBanner status={status} placeName={placeName} />
+
+                  {/* Real Interactive Leaflet OpenStreetMap Map */}
+                  <div className="flex-1 min-h-[300px]">
+                    <InteractiveMap
+                      userLoc={loc}
+                      workers={nearbyWorkers}
+                      onSelectWorker={setSelectedWorker}
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-500 text-center">
+                    Blue dot = Your Live GPS position • Gold/Navy dots = Nearby verified service providers. Tap any marker to view & book.
+                  </p>
                 </div>
               )}
 
