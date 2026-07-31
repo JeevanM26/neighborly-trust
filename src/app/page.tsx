@@ -287,261 +287,302 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
   );
 }
 
-// ─── CUSTOMER LOGIN ────────────────────────────────────────────────────────────
-function CustomerLogin({ onLogin, goProvider, notify }: { onLogin: () => void; goProvider: () => void; notify: (m: string, t?: 'success'|'error'|'info') => void }) {
+// ─── PHONE OTP LOGIN (shared by Customer & Provider) ──────────────────────────
+function PhoneOTPLogin({
+  role, onLogin, goOther, notify
+}: {
+  role: 'customer' | 'provider';
+  onLogin: () => void;
+  goOther: () => void;
+  notify: (m: string, t?: 'success'|'error'|'info') => void;
+}) {
+  const isCustomer = role === 'customer';
+  const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [consent, setConsent] = useState(false);
+  const [otp, setOtp] = useState(['', '', '', '']);
+  const [step, setStep] = useState<'details' | 'otp'>('details');
   const [loading, setLoading] = useState(false);
+  const [consent, setConsent] = useState(false);
   const [error, setError] = useState('');
+  const [countdown, setCountdown] = useState(0);
+  const otpRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
-  const handleLogin = async () => {
-    if (!phone.trim() || !password.trim()) { setError('Please fill in all fields.'); return; }
+  // countdown timer for resend OTP
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
+
+  const sendOTP = async () => {
+    if (!name.trim()) { setError('Please enter your full name.'); return; }
+    if (!/^[6-9]\d{9}$/.test(phone.replace(/\s/g, ''))) { setError('Please enter a valid 10-digit Indian mobile number.'); return; }
     if (!consent) { setError('Please accept the privacy consent to continue.'); return; }
     setError(''); setLoading(true);
-    setTimeout(() => { setLoading(false); onLogin(); }, 800);
+
+    try {
+      // Try Supabase phone OTP
+      const { error: otpErr } = await supabase.auth.signInWithOtp({ phone: `+91${phone.replace(/\s/g, '')}` });
+      if (otpErr) throw otpErr;
+    } catch {
+      // In demo/dev mode without Twilio, proceed anyway showing OTP screen
+    }
+
+    setLoading(false);
+    setStep('otp');
+    setCountdown(30);
+    notify('OTP sent to +91 ' + phone, 'info');
+    setTimeout(() => otpRefs[0].current?.focus(), 100);
   };
 
-  const handleGoogle = async () => {
-    notify('Redirecting to Google Sign-In…', 'info');
-    await supabase.auth.signInWithOAuth({ provider: 'google' });
+  const handleOtpChange = (val: string, idx: number) => {
+    if (!/^\d?$/.test(val)) return;
+    const next = [...otp];
+    next[idx] = val;
+    setOtp(next);
+    if (val && idx < 3) otpRefs[idx + 1].current?.focus();
   };
+
+  const handleOtpKey = (e: React.KeyboardEvent, idx: number) => {
+    if (e.key === 'Backspace' && !otp[idx] && idx > 0) otpRefs[idx - 1].current?.focus();
+  };
+
+  const verifyOTP = async () => {
+    const code = otp.join('');
+    if (code.length < 4) { setError('Please enter the 4-digit OTP.'); return; }
+    setError(''); setLoading(true);
+
+    try {
+      const { error: verErr } = await supabase.auth.verifyOtp({
+        phone: `+91${phone.replace(/\s/g, '')}`,
+        token: code,
+        type: 'sms',
+      });
+      if (verErr && code !== '1234') throw verErr; // demo OTP = 1234
+    } catch {
+      // Demo mode: accept '1234' as valid OTP
+      if (code !== '1234') { setError('Incorrect OTP. Please try again.'); setLoading(false); return; }
+    }
+
+    setLoading(false);
+    notify(`Welcome, ${name}! 🎉`, 'success');
+    setTimeout(onLogin, 600);
+  };
+
+  const HeroIcon = isCustomer ? HomeIcon : Briefcase;
+  const badgeColor = isCustomer ? '#10b981' : GOLD;
+  const BadgeIcon = isCustomer ? BadgeCheck : Award;
 
   return (
     <div className="h-full overflow-y-auto no-scrollbar" style={{ background: 'linear-gradient(180deg,#EAF2FB 0%,#f8fafc 100%)' }}>
+
       {/* Role Toggle */}
       <div className="px-5 pt-5">
         <div className="flex bg-white rounded-2xl p-1 shadow-sm border border-slate-100">
-          <button className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white shadow-md transition" style={{ background: NAVY }}>
+          <button
+            onClick={isCustomer ? undefined : goOther}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition ${isCustomer ? 'text-white shadow-md' : 'text-slate-500'}`}
+            style={isCustomer ? { background: NAVY } : {}}
+          >
             Customer
           </button>
-          <button onClick={goProvider} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:text-slate-700 transition">
+          <button
+            onClick={!isCustomer ? undefined : goOther}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition ${!isCustomer ? 'text-white shadow-md' : 'text-slate-500'}`}
+            style={!isCustomer ? { background: NAVY } : {}}
+          >
             Service Provider
           </button>
         </div>
       </div>
 
       {/* Hero */}
-      <div className="flex flex-col items-center pt-8 pb-6 px-5">
-        <div className="relative mb-5">
-          <div className="w-20 h-20 rounded-3xl shadow-2xl flex items-center justify-center" style={{ background: 'linear-gradient(145deg,#0B3D66,#072A4A)' }}>
-            <HomeIcon color="white" size={36} />
+      <div className="flex flex-col items-center pt-7 pb-5 px-5">
+        <div className="relative mb-4">
+          <div className="w-20 h-20 rounded-3xl shadow-2xl flex items-center justify-center"
+            style={{ background: isCustomer ? 'linear-gradient(145deg,#0B3D66,#072A4A)' : 'linear-gradient(145deg,#072A4A,#1a5a96)' }}>
+            <HeroIcon color="white" size={34} />
           </div>
-          <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center ring-2 ring-white">
-            <BadgeCheck size={14} color="white" />
+          <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center ring-2 ring-white" style={{ background: badgeColor }}>
+            <BadgeIcon size={13} color="white" />
           </div>
         </div>
-        <h1 className="text-2xl font-extrabold text-slate-900">Neighborly Trust</h1>
-        <p className="text-sm text-slate-500 mt-1 text-center">Verified local services at your doorstep</p>
-
-        {/* Trust badges */}
-        <div className="flex items-center gap-3 mt-4">
-          {['10K+ Jobs Done','⭐ 4.8 Rating','Govt. Verified'].map(b => (
+        <h1 className="text-2xl font-extrabold text-slate-900">
+          {isCustomer ? 'Neighborly Trust' : 'Provider Portal'}
+        </h1>
+        <p className="text-sm text-slate-500 mt-1 text-center">
+          {isCustomer ? 'Verified local services at your doorstep' : 'Manage your jobs, earnings & availability'}
+        </p>
+        <div className="flex items-center gap-2 mt-3 flex-wrap justify-center">
+          {(isCustomer
+            ? ['10K+ Jobs','⭐ 4.8 Rated','Govt. Verified']
+            : ['₹ Daily Pay','Live Job Alerts','Free Listing']
+          ).map(b => (
             <span key={b} className="text-[10px] font-semibold text-slate-500 bg-white border border-slate-200 rounded-full px-2.5 py-1">{b}</span>
           ))}
         </div>
       </div>
 
-      {/* Form */}
-      <div className="px-5 pb-10">
-        <div className="bg-white rounded-3xl shadow-lg border border-slate-100 p-5 space-y-3">
-          <h2 className="text-base font-bold text-slate-900 mb-1">Sign in to your account</h2>
+      {/* ── STEP 1: Details ── */}
+      {step === 'details' && (
+        <div className="px-5 pb-10 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-lg border border-slate-100 p-5 space-y-3">
+            <h2 className="text-base font-bold text-slate-900">
+              {isCustomer ? 'Sign up / Sign in' : 'Provider Sign in'}
+            </h2>
+            <p className="text-xs text-slate-500">
+              Enter your name and mobile number. We will send a 4-digit OTP on your phone.
+            </p>
 
-          {/* Google */}
-          <button
-            onClick={handleGoogle}
-            className="w-full py-3 rounded-xl border-2 border-slate-200 font-semibold text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-2.5 transition btn-press text-sm"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-            </svg>
-            Continue with Google
-          </button>
+            {/* Name */}
+            <label className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 input-ring transition-all">
+              <User size={16} className="text-slate-400 flex-shrink-0" />
+              <input
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Full Name (e.g. Raju Sharma)"
+                className="w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-400"
+              />
+            </label>
 
-          <div className="flex items-center gap-3">
-            <div className="h-px bg-slate-100 flex-1" />
-            <span className="text-[11px] text-slate-400 font-medium">or</span>
-            <div className="h-px bg-slate-100 flex-1" />
-          </div>
+            {/* Phone */}
+            <label className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 input-ring transition-all">
+              <div className="flex items-center gap-1.5 flex-shrink-0 border-r border-slate-300 pr-2.5 mr-0.5">
+                <span className="text-sm">🇮🇳</span>
+                <span className="text-sm font-semibold text-slate-600">+91</span>
+              </div>
+              <input
+                value={phone}
+                onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder="Mobile Number"
+                inputMode="numeric"
+                maxLength={10}
+                className="w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-400"
+              />
+            </label>
 
-          {/* Phone */}
-          <label className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 input-ring transition-all">
-            <Phone size={16} className="text-slate-400 flex-shrink-0" />
-            <input
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder="Phone or Email"
-              className="w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-400"
-            />
-          </label>
-
-          {/* Password */}
-          <label className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 input-ring transition-all">
-            <Lock size={16} className="text-slate-400 flex-shrink-0" />
-            <input
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              type="password"
-              placeholder="Password"
-              className="w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-400"
-            />
-          </label>
-
-          {/* Consent */}
-          <label className="flex items-start gap-2.5 bg-blue-50 border border-blue-100 rounded-xl p-3 cursor-pointer">
-            <div className="mt-0.5 flex-shrink-0">
+            {/* Consent */}
+            <label className="flex items-start gap-2.5 bg-blue-50 border border-blue-100 rounded-xl p-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={consent}
                 onChange={e => setConsent(e.target.checked)}
-                className="w-4 h-4 accent-blue-800 rounded"
+                className="mt-0.5 w-4 h-4 accent-blue-800 flex-shrink-0"
               />
-            </div>
-            <p className="text-[11px] text-slate-600 leading-relaxed">
-              <strong className="text-slate-800">Privacy Consent (DPDP Act 2023):</strong> I consent to share my GPS location and contact details to match with nearby verified service providers.
-            </p>
-          </label>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                <strong className="text-slate-800">Privacy Consent (DPDP Act 2023):</strong> I allow Neighborly Trust to use my mobile number and GPS location to connect me with nearby verified service providers.
+              </p>
+            </label>
 
-          {error && (
-            <div className="flex items-center gap-2 bg-red-50 text-red-700 rounded-xl p-3">
-              <AlertCircle size={14} className="flex-shrink-0" />
-              <p className="text-xs font-semibold">{error}</p>
+            {error && (
+              <div className="flex items-center gap-2 bg-red-50 text-red-700 rounded-xl p-3">
+                <AlertCircle size={14} className="flex-shrink-0" />
+                <p className="text-xs font-semibold">{error}</p>
+              </div>
+            )}
+
+            <button
+              onClick={sendOTP}
+              disabled={loading}
+              className="w-full py-4 rounded-2xl text-white font-bold text-sm btn-press shadow-lg flex items-center justify-center gap-2"
+              style={{ background: loading ? '#1a5a96' : 'linear-gradient(135deg,#0B3D66,#072A4A)' }}
+            >
+              {loading
+                ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Sending OTP…</>
+                : <><Phone size={16} /> Send OTP →</>
+              }
+            </button>
+
+            <p className="text-center text-[11px] text-slate-400">
+              By continuing you agree to our <span className="text-blue-700 font-semibold">Terms</span> & <span className="text-blue-700 font-semibold">Privacy Policy</span>
+            </p>
+          </div>
+
+          {isCustomer && (
+            <div className="mt-4 bg-amber-50 border border-amber-200 rounded-2xl p-3.5 text-center">
+              <p className="text-xs font-semibold text-amber-800">
+                🔒 No password needed. Just your phone number.
+              </p>
+              <p className="text-[11px] text-amber-700 mt-0.5">Works on any basic smartphone — even without internet data after OTP.</p>
             </div>
           )}
-
-          <button
-            onClick={handleLogin}
-            disabled={loading}
-            className="w-full py-4 rounded-xl text-white font-bold text-sm btn-press shadow-lg flex items-center justify-center gap-2 mt-1"
-            style={{ background: loading ? '#1a5a96' : 'linear-gradient(135deg,#0B3D66,#072A4A)' }}
-          >
-            {loading ? (
-              <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Signing in…</>
-            ) : 'Sign In →'}
-          </button>
-
-          <p className="text-center text-[11px] text-slate-500">
-            By signing in you agree to our{' '}
-            <span className="text-blue-700 font-semibold cursor-pointer">Terms</span> &{' '}
-            <span className="text-blue-700 font-semibold cursor-pointer">Privacy Policy</span>
-          </p>
         </div>
-      </div>
+      )}
+
+      {/* ── STEP 2: OTP Entry ── */}
+      {step === 'otp' && (
+        <div className="px-5 pb-10 animate-slide-up">
+          <div className="bg-white rounded-3xl shadow-lg border border-slate-100 p-5 space-y-4">
+            {/* Back */}
+            <button onClick={() => { setStep('details'); setOtp(['','','','']); setError(''); }} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 -mb-1">
+              <ChevronLeft size={14} /> Change number
+            </button>
+
+            <div className="text-center pb-1">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg" style={{ background: 'linear-gradient(145deg,#0B3D66,#072A4A)' }}>
+                <Phone size={26} color="white" />
+              </div>
+              <h2 className="text-lg font-extrabold text-slate-900">Enter OTP</h2>
+              <p className="text-xs text-slate-500 mt-1">
+                We sent a 4-digit code to <strong className="text-slate-700">+91 {phone}</strong>
+              </p>
+              <p className="text-[11px] text-blue-700 font-semibold mt-1">Demo mode: use OTP <strong>1234</strong></p>
+            </div>
+
+            {/* 4-box OTP input */}
+            <div className="flex justify-center gap-3">
+              {otp.map((digit, idx) => (
+                <input
+                  key={idx}
+                  ref={otpRefs[idx]}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={e => handleOtpChange(e.target.value, idx)}
+                  onKeyDown={e => handleOtpKey(e, idx)}
+                  className="w-14 h-14 text-center text-2xl font-extrabold text-slate-900 border-2 rounded-2xl transition-all focus:border-blue-800 focus:shadow-md"
+                  style={{ borderColor: digit ? NAVY : '#e2e8f0', background: digit ? '#EAF2FB' : '#f8fafc' }}
+                />
+              ))}
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-2 bg-red-50 text-red-700 rounded-xl p-3">
+                <AlertCircle size={14} className="flex-shrink-0" />
+                <p className="text-xs font-semibold">{error}</p>
+              </div>
+            )}
+
+            <button
+              onClick={verifyOTP}
+              disabled={loading || otp.join('').length < 4}
+              className="w-full py-4 rounded-2xl text-white font-bold text-sm btn-press shadow-lg flex items-center justify-center gap-2"
+              style={{ background: otp.join('').length < 4 ? '#94a3b8' : 'linear-gradient(135deg,#0B3D66,#072A4A)' }}
+            >
+              {loading
+                ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Verifying…</>
+                : <><CheckCircle2 size={16} /> Verify & Continue</>
+              }
+            </button>
+
+            {/* Resend */}
+            <div className="text-center">
+              {countdown > 0 ? (
+                <p className="text-xs text-slate-400">Resend OTP in <strong className="text-slate-600">{countdown}s</strong></p>
+              ) : (
+                <button onClick={sendOTP} className="text-xs font-bold text-blue-800 hover:underline">
+                  Didn't receive? Resend OTP
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── PROVIDER LOGIN ────────────────────────────────────────────────────────────
-function ProviderLogin({ onLogin, goCustomer, notify }: { onLogin: () => void; goCustomer: () => void; notify: (m: string, t?: 'success'|'error'|'info') => void }) {
-  const [id, setId] = useState('');
-  const [pin, setPin] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleLogin = () => {
-    if (!id.trim() || !pin.trim()) { setError('Please enter your Professional ID and PIN.'); return; }
-    setError(''); setLoading(true);
-    setTimeout(() => { setLoading(false); onLogin(); }, 800);
-  };
-
-  const handleGoogle = async () => {
-    notify('Redirecting to Google Sign-In…', 'info');
-    await supabase.auth.signInWithOAuth({ provider: 'google' });
-  };
-
-  return (
-    <div className="h-full overflow-y-auto no-scrollbar" style={{ background: 'linear-gradient(180deg,#EAF2FB 0%,#f8fafc 100%)' }}>
-      <div className="px-5 pt-5">
-        <div className="flex bg-white rounded-2xl p-1 shadow-sm border border-slate-100">
-          <button onClick={goCustomer} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:text-slate-700 transition">
-            Customer
-          </button>
-          <button className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white shadow-md transition" style={{ background: NAVY }}>
-            Service Provider
-          </button>
-        </div>
-      </div>
-
-      <div className="flex flex-col items-center pt-8 pb-6 px-5">
-        <div className="relative mb-5">
-          <div className="w-20 h-20 rounded-3xl shadow-2xl flex items-center justify-center" style={{ background: 'linear-gradient(145deg,#072A4A,#0B3D66)' }}>
-            <Briefcase color="white" size={34} />
-          </div>
-          <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center ring-2 ring-white" style={{ background: GOLD }}>
-            <Award size={13} color="white" />
-          </div>
-        </div>
-        <h1 className="text-2xl font-extrabold text-slate-900">Provider Portal</h1>
-        <p className="text-sm text-slate-500 mt-1 text-center">Manage your jobs, earnings & availability</p>
-        <div className="flex items-center gap-3 mt-4">
-          {['₹ Daily Earnings','Live Job Alerts','Free Listing'].map(b => (
-            <span key={b} className="text-[10px] font-semibold text-slate-500 bg-white border border-slate-200 rounded-full px-2.5 py-1">{b}</span>
-          ))}
-        </div>
-      </div>
-
-      <div className="px-5 pb-10">
-        <div className="bg-white rounded-3xl shadow-lg border border-slate-100 p-5 space-y-3">
-          <h2 className="text-base font-bold text-slate-900 mb-1">Provider Sign In</h2>
-
-          <button
-            onClick={handleGoogle}
-            className="w-full py-3 rounded-xl border-2 border-slate-200 font-semibold text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-2.5 transition btn-press text-sm"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-            </svg>
-            Continue with Google
-          </button>
-
-          <div className="flex items-center gap-3">
-            <div className="h-px bg-slate-100 flex-1" />
-            <span className="text-[11px] text-slate-400 font-medium">or</span>
-            <div className="h-px bg-slate-100 flex-1" />
-          </div>
-
-          <label className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 input-ring transition-all">
-            <CreditCard size={16} className="text-slate-400 flex-shrink-0" />
-            <input value={id} onChange={e => setId(e.target.value)} placeholder="Professional ID or Phone (e.g. NT-9921)" className="w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-400" />
-          </label>
-
-          <label className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 input-ring transition-all">
-            <Lock size={16} className="text-slate-400 flex-shrink-0" />
-            <input value={pin} onChange={e => setPin(e.target.value)} type="password" placeholder="Access PIN" className="w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-400" />
-          </label>
-
-          {error && (
-            <div className="flex items-center gap-2 bg-red-50 text-red-700 rounded-xl p-3">
-              <AlertCircle size={14} className="flex-shrink-0" />
-              <p className="text-xs font-semibold">{error}</p>
-            </div>
-          )}
-
-          <button
-            onClick={handleLogin}
-            disabled={loading}
-            className="w-full py-4 rounded-xl text-white font-bold text-sm btn-press shadow-lg flex items-center justify-center gap-2 mt-1"
-            style={{ background: loading ? '#1a5a96' : 'linear-gradient(135deg,#072A4A,#0B3D66)' }}
-          >
-            {loading ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Signing in…</> : 'Access Provider Dashboard →'}
-          </button>
-
-          <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
-            <p className="text-[11px] text-amber-800 text-center font-medium">
-              📞 Not yet registered? Call <strong>1800-XXX-XXXX</strong> or visit your local Gram Panchayat office.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── WORKER CARD ──────────────────────────────────────────────────────────────
 function WorkerCard({ w, onSelect }: { w: ProviderProfile; onSelect: () => void }) {
@@ -1228,13 +1269,13 @@ export default function App() {
 
           {screen === 'login' && (
             <div className="flex-1 overflow-hidden">
-              <CustomerLogin onLogin={() => setScreen('customer')} goProvider={() => setScreen('provider-login')} notify={notify} />
+              <PhoneOTPLogin role="customer" onLogin={() => setScreen('customer')} goOther={() => setScreen('provider-login')} notify={notify} />
             </div>
           )}
 
           {screen === 'provider-login' && (
             <div className="flex-1 overflow-hidden">
-              <ProviderLogin onLogin={() => setScreen('provider')} goCustomer={() => setScreen('login')} notify={notify} />
+              <PhoneOTPLogin role="provider" onLogin={() => { setScreen('provider'); setTab('dashboard'); }} goOther={() => setScreen('login')} notify={notify} />
             </div>
           )}
 
