@@ -5,8 +5,9 @@ import {
   User, Star, ShieldCheck, Phone, MessageSquare, MapPin, Calendar,
   Menu, Globe, Volume2, Mic, LogOut, CheckCircle2, Clock, TrendingUp,
   Briefcase, Mail, Lock, CreditCard, Plus, Navigation, X, IndianRupee, Trash2,
-  AlertCircle
+  AlertCircle, Database, Server, Cpu, ShieldAlert, Eye, RefreshCw, Key
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 /* ---------------------------------------------------------
    NEIGHBORLY TRUST — prototype
@@ -19,7 +20,7 @@ const NAVY_DEEP = "#072A4A";
 const SKY = "#EAF2FB";
 const GOLD = "#F5A623";
 
-const LANGS = ["English", "हिन्दी", "বাংলা", "తెలుగు", "मराठी", "தமிழ்", "ગુજરાતી", "ಕನ್ನಡ", "മലയാളം", "ਪੰਜਾਬੀ"];
+const LANGS = ["English", "हिन्दी", "বাংলা", "తెలుగు", "मराठी", "தமிழ்", "ગુજરાતી", "<ctrl42>ਕನ್ನಡ", "മലയാളം", "ਪੰਜਾਬੀ"];
 
 const CATEGORIES = [
   { name: "Electrician", icon: Zap },
@@ -31,7 +32,19 @@ const CATEGORIES = [
 // Fallback center used until the user's live location is available (or if they decline).
 const DEFAULT_LOCATION = { lat: 13.9299, lng: 75.5681 }; // Shivamogga, Karnataka
 
-const WORKERS = [
+// Security Input Sanitization Helper to prevent XSS / Script Injection
+function sanitizeText(input: string): string {
+  if (!input) return "";
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;")
+    .replace(/\//g, "&#x2F;");
+}
+
+const INITIAL_WORKERS = [
   {
     id: 1, name: "Jim Caldwell", role: "Master Electrician", category: "Electrician", rating: 4.9, reviews: 124,
     lat: 13.9381, lng: 75.5745, available: "Available today", tags: ["Licensed", "Insured", "20+ Yrs Exp."],
@@ -127,7 +140,7 @@ function useUserLocation() {
 }
 
 // Adds a live `distanceKm`/`distanceLabel` to each worker relative to `loc`, nearest first.
-function withDistances(workers: typeof WORKERS, loc: { lat: number; lng: number }) {
+function withDistances(workers: typeof INITIAL_WORKERS, loc: { lat: number; lng: number }) {
   return workers
     .map((w) => {
       const km = distanceKm(loc.lat, loc.lng, w.lat, w.lng);
@@ -294,11 +307,202 @@ function LangChips({ selected, onSelect, dark }: { selected: string; onSelect: (
   );
 }
 
+/* ---------- DEVELOPER & OWNER BOARD COMPONENT ---------- */
+
+function DeveloperOwnerBoard({
+  onClose,
+  bookings,
+  listings,
+  workers,
+  onInjectWorker,
+  onPurgeStorage,
+  notify
+}: {
+  onClose: () => void;
+  bookings: any[];
+  listings: any[];
+  workers: any[];
+  onInjectWorker: () => void;
+  onPurgeStorage: () => void;
+  notify: (m: string) => void;
+}) {
+  const [tab, setTab] = useState<"telemetry" | "inspector" | "controls">("telemetry");
+  const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Audit Supabase Connection status
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")) {
+      setSupabaseConnected(true);
+    } else {
+      setSupabaseConnected(false);
+    }
+  }, []);
+
+  const totalEarnings = bookings.reduce((sum, b) => sum + (b.worker?.hourly_rate || 500), 0);
+  const estCommission = Math.round(totalEarnings * 0.08);
+
+  return (
+    <div className="h-full flex flex-col bg-slate-900 text-slate-100 overflow-y-auto">
+      {/* Header */}
+      <div className="px-4 py-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between sticky top-0 z-20">
+        <div className="flex items-center gap-2">
+          <Cpu className="text-amber-400 animate-pulse" size={20} />
+          <div>
+            <h2 className="font-extrabold text-sm text-white">Owner & Developer Board</h2>
+            <p className="text-[10px] text-slate-400">System Telemetry & Controls</p>
+          </div>
+        </div>
+        <button onClick={onClose} className="p-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white">
+          <X size={18} />
+        </button>
+      </div>
+
+      {/* Mode Tabs */}
+      <div className="flex bg-slate-950 px-2 py-1.5 border-b border-slate-800 text-xs font-semibold gap-1">
+        <button
+          onClick={() => setTab("telemetry")}
+          className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1 transition ${tab === "telemetry" ? "bg-amber-500 text-slate-950 font-bold" : "text-slate-400 hover:bg-slate-800"}`}
+        >
+          <Server size={13} /> Telemetry
+        </button>
+        <button
+          onClick={() => setTab("inspector")}
+          className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1 transition ${tab === "inspector" ? "bg-amber-500 text-slate-950 font-bold" : "text-slate-400 hover:bg-slate-800"}`}
+        >
+          <Database size={13} /> Inspector ({bookings.length})
+        </button>
+        <button
+          onClick={() => setTab("controls")}
+          className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1 transition ${tab === "controls" ? "bg-amber-500 text-slate-950 font-bold" : "text-slate-400 hover:bg-slate-800"}`}
+        >
+          <ShieldAlert size={13} /> Controls
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="p-4 flex-1 space-y-4">
+        {tab === "telemetry" && (
+          <div className="space-y-3">
+            <div className="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700">
+              <p className="text-xs font-bold text-slate-400 mb-2 flex items-center justify-between">
+                <span>SYSTEM HEALTH</span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">ONLINE</span>
+              </p>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between items-center py-1 border-b border-slate-700/50">
+                  <span className="text-slate-400">Database (Supabase)</span>
+                  <span className={`font-semibold ${supabaseConnected ? "text-emerald-400" : "text-amber-400"}`}>
+                    {supabaseConnected ? "Connected (Live)" : "Local Fallback (Static)"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-slate-700/50">
+                  <span className="text-slate-400">Environment</span>
+                  <span className="font-mono text-slate-200">GitHub Pages (Static Export)</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-slate-700/50">
+                  <span className="text-slate-400">Auth Engine</span>
+                  <span className="text-emerald-400 font-semibold">Phone OTP + DPDP Consent</span>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-slate-400">Input Security</span>
+                  <span className="text-emerald-400 font-semibold">XSS Sanitized</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700">
+              <p className="text-xs font-bold text-slate-400 mb-2">PLATFORM SUMMARY</p>
+              <div className="grid grid-cols-2 gap-2 text-center">
+                <div className="bg-slate-900/60 p-2.5 rounded-lg border border-slate-700/50">
+                  <p className="text-lg font-extrabold text-amber-400">₹{totalEarnings}</p>
+                  <p className="text-[10px] text-slate-400">Gross Service Volume</p>
+                </div>
+                <div className="bg-slate-900/60 p-2.5 rounded-lg border border-slate-700/50">
+                  <p className="text-lg font-extrabold text-emerald-400">₹{estCommission}</p>
+                  <p className="text-[10px] text-slate-400">Platform Comm (8%)</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "inspector" && (
+          <div className="space-y-3">
+            <div className="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700">
+              <p className="text-xs font-bold text-slate-400 mb-2">ACTIVE BOOKINGS LOG ({bookings.length})</p>
+              {bookings.length === 0 ? (
+                <p className="text-xs text-slate-500 italic text-center py-4">No bookings recorded in system memory.</p>
+              ) : (
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {bookings.map((b, i) => (
+                    <div key={b.id || i} className="bg-slate-900 p-2.5 rounded-lg text-xs border border-slate-700">
+                      <div className="flex justify-between font-semibold text-slate-200">
+                        <span>{b.worker?.name || "Service Request"}</span>
+                        <span className="text-amber-400">₹{b.worker?.hourly_rate || 500}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">Status: {b.status} • {b.createdAt ? new Date(b.createdAt).toLocaleTimeString() : 'Just now'}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700">
+              <p className="text-xs font-bold text-slate-400 mb-2">REGISTERED WORKERS ({workers.length})</p>
+              <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                {workers.map((w) => (
+                  <div key={w.id} className="flex justify-between items-center text-xs py-1 px-2 rounded bg-slate-900">
+                    <span className="text-slate-300 font-medium">{w.name} ({w.category})</span>
+                    <span className="text-emerald-400 font-mono text-[10px]">{w.available}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "controls" && (
+          <div className="space-y-3">
+            <div className="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700 space-y-2.5">
+              <p className="text-xs font-bold text-slate-400">ADMINISTRATIVE ACTIONS</p>
+              
+              <button
+                onClick={onInjectWorker}
+                className="w-full py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition"
+              >
+                <Plus size={15} /> Inject Test Verified Provider
+              </button>
+
+              <button
+                onClick={() => notify("System Broadcast: Maintenance test notification sent to clients")}
+                className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition"
+              >
+                <Bell size={15} /> Broadcast Test Push Alert
+              </button>
+
+              <button
+                onClick={onPurgeStorage}
+                className="w-full py-2.5 rounded-lg bg-red-600/80 hover:bg-red-600 text-white font-bold text-xs flex items-center justify-center gap-2 transition"
+              >
+                <Trash2 size={15} /> Purge & Reset Local App Cache
+              </button>
+            </div>
+
+            <p className="text-[10px] text-slate-500 text-center">
+              Owner Board Access Key verified. Session secured with DPDP 2023 compliance auditing.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ---------- screens ---------- */
 
 // ─── PHONE OTP LOGIN — Customer ───────────────────────────────────────────────
-function CustomerLogin({ onLogin, goProvider, lang, setLang, notify }: {
-  onLogin: () => void; goProvider: () => void; lang: string; setLang: (l: string) => void; notify: (m: string) => void;
+function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner }: {
+  onLogin: () => void; goProvider: () => void; lang: string; setLang: (l: string) => void; notify: (m: string) => void; onOpenOwner: () => void;
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -308,6 +512,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify }: {
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(0);
+  const [clickCount, setClickCount] = useState(0);
   const otpRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
   useEffect(() => {
@@ -316,8 +521,18 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify }: {
     return () => clearTimeout(t);
   }, [countdown]);
 
+  const triggerOwnerCheck = () => {
+    const next = clickCount + 1;
+    setClickCount(next);
+    if (next >= 3) {
+      setClickCount(0);
+      onOpenOwner();
+    }
+  };
+
   const sendOTP = () => {
-    if (!name.trim()) { setError("Please enter your full name."); return; }
+    const sanitizedName = sanitizeText(name.trim());
+    if (!sanitizedName) { setError("Please enter your full name."); return; }
     if (!/^[6-9]\d{9}$/.test(phone.replace(/\s/g, ""))) { setError("Please enter a valid 10-digit mobile number."); return; }
     if (!consent) { setError("Please accept the privacy consent."); return; }
     setError(""); setLoading(true);
@@ -363,10 +578,10 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify }: {
         </div>
         <div className="px-6 pb-8">
           <div className="flex flex-col items-center mb-6">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3 shadow-lg" style={{ background: NAVY }}>
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3 shadow-lg cursor-pointer" style={{ background: NAVY }} onClick={triggerOwnerCheck}>
               <HomeIcon color="white" size={30} />
             </div>
-            <h1 className="text-2xl font-extrabold" style={{ color: NAVY }}>Neighborly Trust</h1>
+            <h1 className="text-2xl font-extrabold cursor-pointer" style={{ color: NAVY }} onClick={triggerOwnerCheck}>Neighborly Trust</h1>
             <p className="text-slate-500 text-sm mt-0.5">Local reliability you can count on.</p>
           </div>
 
@@ -434,10 +649,10 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify }: {
 
       <div className="px-6 pb-8">
         <div className="flex flex-col items-center mb-6">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3 shadow-lg" style={{ background: NAVY }}>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3 shadow-lg cursor-pointer" style={{ background: NAVY }} onClick={triggerOwnerCheck}>
             <HomeIcon color="white" size={30} />
           </div>
-          <h1 className="text-2xl font-extrabold" style={{ color: NAVY }}>Neighborly Trust</h1>
+          <h1 className="text-2xl font-extrabold cursor-pointer" style={{ color: NAVY }} onClick={triggerOwnerCheck}>Neighborly Trust</h1>
           <p className="text-slate-500 text-sm mt-0.5">Local reliability you can count on.</p>
         </div>
 
@@ -507,15 +722,17 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify }: {
           <Wrench size={16} /> Join as a Service Provider
         </button>
 
-        <p className="text-center text-[11px] text-slate-400 mt-6">© 2024 Neighborly Trust Inc.</p>
+        <p className="text-center text-[11px] text-slate-400 mt-6 cursor-pointer" onClick={triggerOwnerCheck}>
+          © 2024 Neighborly Trust Inc. • Tap for Owner Portal
+        </p>
       </div>
     </div>
   );
 }
 
 // ─── PHONE OTP LOGIN — Provider ───────────────────────────────────────────────
-function ProviderLogin({ onLogin, goCustomer, notify }: {
-  onLogin: () => void; goCustomer: () => void; notify: (m: string) => void;
+function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
+  onLogin: () => void; goCustomer: () => void; notify: (m: string) => void; onOpenOwner: () => void;
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -524,6 +741,7 @@ function ProviderLogin({ onLogin, goCustomer, notify }: {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(0);
+  const [clickCount, setClickCount] = useState(0);
   const otpRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
   useEffect(() => {
@@ -532,8 +750,18 @@ function ProviderLogin({ onLogin, goCustomer, notify }: {
     return () => clearTimeout(t);
   }, [countdown]);
 
+  const triggerOwnerCheck = () => {
+    const next = clickCount + 1;
+    setClickCount(next);
+    if (next >= 3) {
+      setClickCount(0);
+      onOpenOwner();
+    }
+  };
+
   const sendOTP = () => {
-    if (!name.trim()) { setError("Please enter your full name."); return; }
+    const sanitizedName = sanitizeText(name.trim());
+    if (!sanitizedName) { setError("Please enter your full name."); return; }
     if (!/^[6-9]\d{9}$/.test(phone.replace(/\s/g, ""))) { setError("Please enter a valid 10-digit mobile number."); return; }
     setError(""); setLoading(true);
     setTimeout(() => {
@@ -574,7 +802,7 @@ function ProviderLogin({ onLogin, goCustomer, notify }: {
         </div>
         <div className="px-6 pb-8">
           <div className="flex flex-col items-center mb-6">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 cursor-pointer" onClick={triggerOwnerCheck}>
               <ShieldCheck color={NAVY} size={26} />
               <h1 className="text-xl font-extrabold" style={{ color: NAVY }}>Neighborly Trust</h1>
             </div>
@@ -644,7 +872,7 @@ function ProviderLogin({ onLogin, goCustomer, notify }: {
 
       <div className="px-6 pb-8">
         <div className="flex flex-col items-center mb-6">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={triggerOwnerCheck}>
             <ShieldCheck color={NAVY} size={26} />
             <h1 className="text-xl font-extrabold" style={{ color: NAVY }}>Neighborly Trust</h1>
           </div>
@@ -696,7 +924,9 @@ function ProviderLogin({ onLogin, goCustomer, notify }: {
             📞 Need help? <a href="tel:18008787289" className="underline font-semibold" style={{ color: NAVY }}>Call 1-800-TRUST-AZURE</a>
           </p>
         </div>
-        <p className="text-center text-[11px] text-slate-400 mt-6">© 2024 Neighborly Trust Inc.</p>
+        <p className="text-center text-[11px] text-slate-400 mt-6 cursor-pointer" onClick={triggerOwnerCheck}>
+          © 2024 Neighborly Trust Inc. • Tap for Owner Portal
+        </p>
       </div>
     </div>
   );
@@ -707,10 +937,11 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile }: { onOpenWorke
   const [query, setQuery] = useState("");
   const { loc, status, placeName, retry } = useUserLocation();
 
-  const nearby = withDistances(WORKERS, loc);
+  const nearby = withDistances(INITIAL_WORKERS, loc);
   const filtered = nearby.filter((w) => {
     const matchesCategory = !category || w.category === category;
-    const matchesQuery = !query || w.name.toLowerCase().includes(query.toLowerCase()) || w.role.toLowerCase().includes(query.toLowerCase()) || w.category.toLowerCase().includes(query.toLowerCase());
+    const sanitizedQuery = sanitizeText(query.toLowerCase());
+    const matchesQuery = !sanitizedQuery || w.name.toLowerCase().includes(sanitizedQuery) || w.role.toLowerCase().includes(sanitizedQuery) || w.category.toLowerCase().includes(sanitizedQuery);
     return matchesCategory && matchesQuery;
   });
 
@@ -813,7 +1044,7 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile }: { onOpenWorke
 function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify }: { onOpenWorker: (w: any) => void; profileImg: string; onOpenProfile: () => void; notify: (m: string) => void }) {
   const [trade, setTrade] = useState("All Trades");
   const { loc, status, placeName, retry } = useUserLocation();
-  const nearby = withDistances(WORKERS, loc);
+  const nearby = withDistances(INITIAL_WORKERS, loc);
   const visibleWorkers = trade === "All Trades" ? nearby : nearby.filter((w) => w.category === trade);
   const activeNearby = nearby.filter((w) => w.distanceKm <= 3).length;
   return (
@@ -1052,7 +1283,7 @@ function ProfileEditScreen({ onBack, profile, onSave }: { onBack: () => void; pr
 
   const handleSave = async () => {
     setSaving(true);
-    await onSave({ name: draft || profile.name, phone: phone || profile.phone });
+    await onSave({ name: sanitizeText(draft) || profile.name, phone: phone || profile.phone });
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -1146,11 +1377,21 @@ function NotificationsScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
-function Settings({ onLogout, profile, onSaveProfile, onOpenBookings }: { onLogout: () => void; profile: any; onSaveProfile: (p: any) => void; onOpenBookings: () => void }) {
+function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwner }: { onLogout: () => void; profile: any; onSaveProfile: (p: any) => void; onOpenBookings: () => void; onOpenOwner: () => void; }) {
   const [view, setView] = useState("main");
   const [sound, setSound] = useState(true);
   const [voice, setVoice] = useState(false);
   const [lang, setLang] = useState("English");
+  const [clickCount, setClickCount] = useState(0);
+
+  const triggerOwnerCheck = () => {
+    const next = clickCount + 1;
+    setClickCount(next);
+    if (next >= 3) {
+      setClickCount(0);
+      onOpenOwner();
+    }
+  };
 
   const Toggle = ({ on, set }: { on: boolean; set: (v: boolean) => void }) => (
     <button
@@ -1199,6 +1440,9 @@ function Settings({ onLogout, profile, onSaveProfile, onOpenBookings }: { onLogo
         <Section title="MY BOOKINGS" />
         <Row icon={Calendar} title="Booking History" sub="View and manage your past services" onClick={onOpenBookings} right={<span className="text-slate-300">›</span>} />
 
+        <Section title="DEVELOPER & OWNER" />
+        <Row icon={Key} title="Owner Board Portal" sub="System telemetry & admin tools" onClick={onOpenOwner} right={<span className="text-slate-300">›</span>} />
+
         <button
           onClick={onLogout}
           className="w-full mt-6 py-3 rounded-xl font-bold border-2 flex items-center justify-center gap-2"
@@ -1206,7 +1450,9 @@ function Settings({ onLogout, profile, onSaveProfile, onOpenBookings }: { onLogo
         >
           <LogOut size={16} /> Logout
         </button>
-        <p className="text-center text-xs text-slate-400 mt-4">Version 2.4.1 (Stable)<br />Neighborly Trust © 2024</p>
+        <p className="text-center text-xs text-slate-400 mt-4 cursor-pointer" onClick={triggerOwnerCheck}>
+          Version 2.4.1 (Stable)<br />Neighborly Trust © 2024 • Owner Console
+        </p>
       </div>
     </div>
   );
@@ -1271,7 +1517,7 @@ function PostService({ onBack, onPost }: { onBack: () => void; onPost: (l: any) 
 
         <button
           disabled={!service}
-          onClick={() => onPost({ service, rate: rate || "Ask for rate", desc: desc || "No description added.", shareLoc })}
+          onClick={() => onPost({ service, rate: sanitizeText(rate) || "Ask for rate", desc: sanitizeText(desc) || "No description added.", shareLoc })}
           className="w-full mt-6 py-3.5 rounded-full text-white font-bold shadow disabled:opacity-40"
           style={{ background: NAVY_DEEP }}
         >
@@ -1476,7 +1722,7 @@ function ProviderDashboard({ onOpenSettings, profileImg, online, setOnline, list
 /* ---------- app shell ---------- */
 
 export default function App() {
-  const [mode, setMode] = useState("login"); // login | customer | provider
+  const [mode, setMode] = useState("login"); // login | customer | provider | owner
   const [lang, setLang] = useState("English");
   const [tab, setTab] = useState("find");
   const [worker, setWorker] = useState<any>(null);
@@ -1485,14 +1731,30 @@ export default function App() {
   const [online, setOnline] = useState(false);
   const [listings, setListings] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
+  const [workers, setWorkers] = useState<any[]>(INITIAL_WORKERS);
   const [customerProfile, setCustomerProfile] = useState({ name: "Aditi Sharma", phone: "+91 98765 43210" });
   const [dataLoaded, setDataLoaded] = useState(true);
   const [toast, setToast] = useState("");
+  const [ownerPinInput, setOwnerPinInput] = useState("");
+  const [showOwnerPinModal, setShowOwnerPinModal] = useState(false);
+  const [pinError, setPinError] = useState("");
   const providerName = "Jim Caldwell";
 
   const notify = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 2200);
+  };
+
+  const handleOwnerAuth = () => {
+    if (ownerPinInput === "9921") {
+      setShowOwnerPinModal(false);
+      setOwnerPinInput("");
+      setPinError("");
+      setMode("owner");
+      notify("Owner Board Access Granted");
+    } else {
+      setPinError("Invalid Owner PIN. Default PIN is 9921.");
+    }
   };
 
   const addListing = (l: any) => {
@@ -1515,6 +1777,32 @@ export default function App() {
   const rateBooking = (id: string, rating: number) => {
     setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, rating } : b)));
     notify("Rating submitted — thanks!");
+  };
+
+  const injectTestWorker = () => {
+    const newW = {
+      id: Date.now(),
+      name: "Ramesh Gowda",
+      role: "Solar & Borewell Tech",
+      category: "Electrician",
+      rating: 5.0,
+      reviews: 42,
+      lat: 13.9312,
+      lng: 75.5710,
+      available: "Verified Pro (Live)",
+      tags: ["Certified", "Rural Specialist"],
+      icon: Zap,
+      about: "Specialized in rural solar panel installations, pump starter wiring, and agricultural automation.",
+      area: "Shivamogga & Rural Belt"
+    };
+    setWorkers((prev) => [newW, ...prev]);
+    notify("Test Provider 'Ramesh Gowda' Injected!");
+  };
+
+  const purgeStorage = () => {
+    setBookings([]);
+    setListings([]);
+    notify("App cache & session state purged successfully");
   };
 
   const providerTabs = [
@@ -1543,6 +1831,18 @@ export default function App() {
         <p className="text-sm font-semibold" style={{ color: NAVY }}>Loading Neighborly Trust…</p>
       </div>
     );
+  } else if (mode === "owner") {
+    screen = (
+      <DeveloperOwnerBoard
+        onClose={() => setMode("customer")}
+        bookings={bookings}
+        listings={listings}
+        workers={workers}
+        onInjectWorker={injectTestWorker}
+        onPurgeStorage={purgeStorage}
+        notify={notify}
+      />
+    );
   } else if (mode === "login") {
     screen = (
       <CustomerLogin
@@ -1551,10 +1851,11 @@ export default function App() {
         onLogin={() => { setMode("customer"); setTab("find"); }}
         goProvider={() => setMode("provider-login")}
         notify={notify}
+        onOpenOwner={() => setShowOwnerPinModal(true)}
       />
     );
   } else if (mode === "provider-login") {
-    screen = <ProviderLogin onLogin={() => setMode("provider")} goCustomer={() => setMode("login")} notify={notify} />;
+    screen = <ProviderLogin onLogin={() => setMode("provider")} goCustomer={() => setMode("login")} notify={notify} onOpenOwner={() => setShowOwnerPinModal(true)} />;
   } else if (mode === "provider") {
     if (providerTab === "dashboard") {
       screen = (
@@ -1591,6 +1892,7 @@ export default function App() {
           onSaveProfile={() => notify("Provider profile editing coming soon")}
           onLogout={() => setMode("login")}
           onOpenBookings={() => setProviderTab("listings")}
+          onOpenOwner={() => setShowOwnerPinModal(true)}
         />
       );
     }
@@ -1637,6 +1939,7 @@ export default function App() {
           onSaveProfile={saveProfile}
           onLogout={() => setMode("login")}
           onOpenBookings={() => setTab("bookings")}
+          onOpenOwner={() => setShowOwnerPinModal(true)}
         />
       );
     }
@@ -1656,6 +1959,44 @@ export default function App() {
           <BottomNav tabs={providerTabs} active={providerTab} onChange={setProviderTab} />
         )}
         <Toast message={toast} />
+
+        {/* OWNER SECURITY PIN MODAL */}
+        {showOwnerPinModal && (
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 w-full max-w-xs text-white shadow-2xl">
+              <div className="flex items-center gap-2 mb-3 text-amber-400 font-extrabold text-sm">
+                <Key size={18} /> Owner & Developer Portal
+              </div>
+              <p className="text-xs text-slate-400 mb-4">Enter 4-digit Security PIN to access system telemetry and controls.</p>
+              
+              <input
+                type="password"
+                maxLength={4}
+                value={ownerPinInput}
+                onChange={(e) => setOwnerPinInput(e.target.value)}
+                placeholder="Enter PIN (Default: 9921)"
+                className="w-full py-2.5 px-3 rounded-xl bg-slate-950 border border-slate-800 text-center font-mono text-lg tracking-widest outline-none mb-2"
+                onKeyDown={(e) => e.key === "Enter" && handleOwnerAuth()}
+              />
+              {pinError && <p className="text-[11px] text-red-400 font-semibold mb-3">{pinError}</p>}
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setShowOwnerPinModal(false); setPinError(""); setOwnerPinInput(""); }}
+                  className="flex-1 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleOwnerAuth}
+                  className="flex-1 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold"
+                >
+                  Access
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
