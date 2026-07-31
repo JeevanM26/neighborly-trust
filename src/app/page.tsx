@@ -20,7 +20,7 @@ const NAVY_DEEP = "#072A4A";
 const SKY = "#EAF2FB";
 const GOLD = "#F5A623";
 
-const LANGS = ["English", "हिन्दी", "বাংলা", "తెలుగు", "मराठी", "தமிழ்", "ગુજરાતી", "<ctrl42>ਕನ್ನಡ", "മലയാളം", "ਪੰਜਾਬੀ"];
+const LANGS = ["English", "हिन्दी", "বাংলা", "తెలుగు", "मराठी", "தமிழ்", "ગુજરાતી", "ਕನ್ನಡ", "മലയാളം", "ਪੰਜਾਬੀ"];
 
 const CATEGORIES = [
   { name: "Electrician", icon: Zap },
@@ -238,7 +238,7 @@ function ServiceImage({ icon: Icon, className, iconSize = 22 }: { icon: React.El
 function Toast({ message }: { message: string }) {
   if (!message) return null;
   return (
-    <div className="absolute left-1/2 -translate-x-1/2 bottom-24 z-50 px-4 py-2.5 rounded-full text-white text-sm font-semibold shadow-lg flex items-center gap-2" style={{ background: NAVY_DEEP, maxWidth: "90%" }}>
+    <div className="absolute left-1/2 -translate-x-1/2 bottom-24 z-50 px-4 py-2.5 rounded-full text-white text-sm font-semibold shadow-lg flex items-center gap-2 animate-bounce" style={{ background: NAVY_DEEP, maxWidth: "90%" }}>
       <CheckCircle2 size={15} className="flex-shrink-0" />
       <span className="truncate">{message}</span>
     </div>
@@ -1445,10 +1445,11 @@ function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwne
 
         <button
           onClick={onLogout}
-          className="w-full mt-6 py-3 rounded-xl font-bold border-2 flex items-center justify-center gap-2"
+          type="button"
+          className="w-full mt-6 py-3.5 rounded-xl font-bold border-2 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] transition hover:bg-red-50"
           style={{ borderColor: "#DC2626", color: "#DC2626" }}
         >
-          <LogOut size={16} /> Logout
+          <LogOut size={16} /> Sign Out / Logout
         </button>
         <p className="text-center text-xs text-slate-400 mt-4 cursor-pointer" onClick={triggerOwnerCheck}>
           Version 2.4.1 (Stable)<br />Neighborly Trust © 2024 • Owner Console
@@ -1593,8 +1594,8 @@ function MyListings({ listings, online, onRemove, onAdd }: { listings: any[]; on
   );
 }
 
-function ProviderDashboard({ onOpenSettings, profileImg, online, setOnline, listingsCount, notify, onOpenListings }: {
-  onOpenSettings: () => void; profileImg: string; online: boolean; setOnline: (v: boolean) => void; listingsCount: number; notify: (m: string) => void; onOpenListings: () => void;
+function ProviderDashboard({ onOpenSettings, profileImg, online, setOnline, listingsCount, notify, onOpenListings, onLogout }: {
+  onOpenSettings: () => void; profileImg: string; online: boolean; setOnline: (v: boolean) => void; listingsCount: number; notify: (m: string) => void; onOpenListings: () => void; onLogout?: () => void;
 }) {
   const days = [
     { d: "Monday, Oct 21", tasks: "8 tasks • 7h 15m", pct: 75 },
@@ -1612,9 +1613,14 @@ function ProviderDashboard({ onOpenSettings, profileImg, online, setOnline, list
         <div className="flex items-center gap-2">
           <span className="font-extrabold flex items-center gap-1"><ShieldCheck size={18} /> Neighborly Trust</span>
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => notify("No new notifications")} aria-label="Notifications"><Bell size={20} /></button>
-          <button onClick={onOpenSettings}><Avatar size={28} name={profileImg} /></button>
+        <div className="flex items-center gap-2.5">
+          <button onClick={() => notify("No new notifications")} aria-label="Notifications" className="p-1 rounded-lg hover:bg-white/10"><Bell size={19} /></button>
+          <button onClick={onOpenSettings} aria-label="Settings"><Avatar size={28} name={profileImg} /></button>
+          {onLogout && (
+            <button onClick={onLogout} aria-label="Log Out" className="p-1 rounded-lg hover:bg-white/10 text-red-200 transition" title="Log Out">
+              <LogOut size={18} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -1745,6 +1751,15 @@ export default function App() {
     setTimeout(() => setToast(""), 2200);
   };
 
+  const handleLogout = () => {
+    setMode("login");
+    setTab("find");
+    setProviderTab("dashboard");
+    setWorker(null);
+    setJustBooked(null);
+    notify("Signed out successfully");
+  };
+
   const handleOwnerAuth = () => {
     if (ownerPinInput === "9921") {
       setShowOwnerPinModal(false);
@@ -1867,6 +1882,7 @@ export default function App() {
           listingsCount={listings.length}
           notify={notify}
           onOpenListings={() => setProviderTab("listings")}
+          onLogout={handleLogout}
         />
       );
     } else if (providerTab === "listings") {
@@ -1890,7 +1906,7 @@ export default function App() {
         <Settings
           profile={{ name: providerName, phone: "+91 90000 11122" }}
           onSaveProfile={() => notify("Provider profile editing coming soon")}
-          onLogout={() => setMode("login")}
+          onLogout={handleLogout}
           onOpenBookings={() => setProviderTab("listings")}
           onOpenOwner={() => setShowOwnerPinModal(true)}
         />
@@ -1937,7 +1953,7 @@ export default function App() {
         <Settings
           profile={customerProfile}
           onSaveProfile={saveProfile}
-          onLogout={() => setMode("login")}
+          onLogout={handleLogout}
           onOpenBookings={() => setTab("bookings")}
           onOpenOwner={() => setShowOwnerPinModal(true)}
         />
