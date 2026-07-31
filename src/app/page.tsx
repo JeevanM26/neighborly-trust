@@ -73,11 +73,16 @@ async function reverseGeocode(lat: number, lng: number) {
   }
 }
 
-/** Continuous real-time GPS tracking using navigator.geolocation.watchPosition */
+/** Continuous real-time GPS tracking using navigator.geolocation.watchPosition with battery & quota throttling */
 function useUserLocation() {
   const [loc, setLoc] = useState(DEFAULT_LOCATION);
   const [status, setStatus] = useState<"loading" | "granted" | "denied">("loading");
   const [placeName, setPlaceName] = useState<string | null>(null);
+  const lastUpdateRef = React.useRef<{ lat: number; lng: number; time: number }>({
+    lat: DEFAULT_LOCATION.lat,
+    lng: DEFAULT_LOCATION.lng,
+    time: 0,
+  });
 
   useEffect(() => {
     if (typeof window === "undefined" || !navigator.geolocation) {
@@ -91,18 +96,27 @@ function useUserLocation() {
     const watchId = navigator.geolocation.watchPosition(
       async (pos) => {
         const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setLoc(next);
-        setStatus("granted");
-        const name = await reverseGeocode(next.lat, next.lng);
-        if (name) setPlaceName(name);
+        const now = Date.now();
+        const distShift = distanceKm(lastUpdateRef.current.lat, lastUpdateRef.current.lng, next.lat, next.lng);
+        const timeDiff = now - lastUpdateRef.current.time;
+
+        // Throttle updates: only process if moved > 30 meters (0.03 km) or > 15 seconds elapsed
+        if (lastUpdateRef.current.time === 0 || distShift > 0.03 || timeDiff > 15000) {
+          lastUpdateRef.current = { lat: next.lat, lng: next.lng, time: now };
+          setLoc(next);
+          setStatus("granted");
+          const name = await reverseGeocode(next.lat, next.lng);
+          if (name) setPlaceName(name);
+        }
       },
       () => {
         setLoc(DEFAULT_LOCATION);
         setStatus("denied");
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
     );
 
+    // Clean up watcher when component unmounts or navigates away
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
