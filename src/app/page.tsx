@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { speakAudio, stopAudio, registerSpeakListener, normalizeLangKey } from "@/lib/audio";
-import { OWNER_PHONE_NUMBERS } from "@/lib/types";
+import { OWNER_PHONE_NUMBERS, PRIMARY_SUPER_OWNER, DEFAULT_OWNER_PHONE_NUMBERS } from "@/lib/types";
 
 /* ---------------------------------------------------------
    NEIGHBORLY TRUST — High Precision & Multi-lingual Engine
@@ -538,7 +538,11 @@ function DeveloperOwnerBoard({
   onToggleBlacklist,
   onInjectWorker,
   onPurgeStorage,
-  notify
+  notify,
+  activeUserPhone,
+  ownerNumbers,
+  onAddOwnerNumber,
+  onRemoveOwnerNumber
 }: {
   onClose: () => void;
   bookings: any[];
@@ -549,9 +553,17 @@ function DeveloperOwnerBoard({
   onInjectWorker: () => void;
   onPurgeStorage: () => void;
   notify: (m: string) => void;
+  activeUserPhone: string;
+  ownerNumbers: string[];
+  onAddOwnerNumber: (num: string) => void;
+  onRemoveOwnerNumber: (num: string) => void;
 }) {
   const [tab, setTab] = useState<"telemetry" | "inspector" | "controls">("telemetry");
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null);
+  const [newOwnerInput, setNewOwnerInput] = useState("");
+
+  const cleanActivePhone = activeUserPhone.replace(/\D/g, "");
+  const isSuperOwner = cleanActivePhone === PRIMARY_SUPER_OWNER || cleanActivePhone === "";
 
   useEffect(() => {
     // Audit Supabase Connection status
@@ -565,6 +577,20 @@ function DeveloperOwnerBoard({
   const totalEarnings = bookings.reduce((sum, b) => sum + (b.worker?.hourly_rate || b.worker?.hourlyRateINR || 350), 0);
   const estCommission = Math.round(totalEarnings * 0.08);
 
+  const handleAddOwner = () => {
+    const clean = newOwnerInput.replace(/\D/g, "");
+    if (clean.length !== 10) {
+      notify("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+    if (ownerNumbers.includes(clean)) {
+      notify("This owner number is already authorized.");
+      return;
+    }
+    onAddOwnerNumber(clean);
+    setNewOwnerInput("");
+  };
+
   return (
     <div className="h-full flex flex-col bg-slate-900 text-slate-100 overflow-y-auto z-30">
       {/* Header */}
@@ -574,7 +600,15 @@ function DeveloperOwnerBoard({
           <div>
             <h2 className="font-extrabold text-sm text-white flex items-center gap-1.5">
               <span>Owner & Developer Board</span>
-              <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono">OWNER PORTAL</span>
+              {isSuperOwner ? (
+                <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono font-bold flex items-center gap-1">
+                  👑 PRIMARY SUPER OWNER
+                </span>
+              ) : (
+                <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1.5 py-0.5 rounded font-mono font-bold">
+                  🛡️ DELEGATE OWNER
+                </span>
+              )}
             </h2>
             <p className="text-[10px] text-slate-400">Paid Placement, Blacklist & Telemetry</p>
           </div>
@@ -617,9 +651,20 @@ function DeveloperOwnerBoard({
               </p>
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between items-center py-1 border-b border-slate-700/50">
-                  <span className="text-slate-400">Designated Owner Phones</span>
-                  <span className="font-mono text-amber-300 font-semibold">{OWNER_PHONE_NUMBERS.join(", ")}</span>
+                  <span className="text-slate-400">My Owner Session</span>
+                  <span className="font-mono text-amber-300 font-bold">
+                    {cleanActivePhone || PRIMARY_SUPER_OWNER} {isSuperOwner ? "(Primary Owner)" : "(Delegate Owner)"}
+                  </span>
                 </div>
+
+                {/* Only Primary Super Owner (7975182162) can see the full list of other owner numbers */}
+                {isSuperOwner && (
+                  <div className="flex justify-between items-center py-1 border-b border-slate-700/50">
+                    <span className="text-slate-400">Authorized Owner Numbers</span>
+                    <span className="font-mono text-slate-200 text-[11px] font-semibold">{ownerNumbers.join(", ")}</span>
+                  </div>
+                )}
+
                 <div className="flex justify-between items-center py-1 border-b border-slate-700/50">
                   <span className="text-slate-400">Passkey Engine</span>
                   <span className="text-emerald-400 font-semibold">2-Step Telegram Bot Ready (PIN: 9921)</span>
@@ -734,6 +779,70 @@ function DeveloperOwnerBoard({
 
         {tab === "controls" && (
           <div className="space-y-3">
+            {/* SUPER ADMIN OWNER MANAGEMENT — ONLY VISIBLE TO PRIMARY SUPER OWNER 7975182162 */}
+            <div className="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700 space-y-3">
+              <p className="text-xs font-bold text-slate-400 flex items-center justify-between">
+                <span>OWNER ACCESS MANAGEMENT</span>
+                {isSuperOwner ? (
+                  <span className="text-[10px] text-amber-400 font-extrabold flex items-center gap-1">
+                    <Key size={11} /> Primary Owner Access
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-slate-500 italic">Restricted to 7975182162</span>
+                )}
+              </p>
+
+              {isSuperOwner ? (
+                <div className="space-y-2.5">
+                  <div className="space-y-1.5">
+                    {ownerNumbers.map((num) => (
+                      <div key={num} className="flex items-center justify-between bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-700 text-xs">
+                        <div className="flex items-center gap-2">
+                          <Phone size={13} className="text-amber-400" />
+                          <span className="font-mono font-bold text-white">{num}</span>
+                          {num === PRIMARY_SUPER_OWNER && (
+                            <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-bold">PERMANENT PRIMARY</span>
+                          )}
+                        </div>
+                        {num !== PRIMARY_SUPER_OWNER && (
+                          <button
+                            onClick={() => onRemoveOwnerNumber(num)}
+                            className="p-1 text-red-400 hover:text-red-300 hover:bg-red-950/50 rounded cursor-pointer transition"
+                            title="Revoke Owner Access"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2 pt-1 border-t border-slate-700/50">
+                    <input
+                      type="tel"
+                      maxLength={10}
+                      value={newOwnerInput}
+                      onChange={(e) => setNewOwnerInput(e.target.value)}
+                      placeholder="Add 10-digit owner number"
+                      className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono outline-none"
+                    />
+                    <button
+                      onClick={handleAddOwner}
+                      className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1 cursor-pointer transition"
+                    >
+                      <Plus size={14} /> Add Owner
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 text-center">
+                  <Lock size={20} className="mx-auto text-slate-500 mb-1" />
+                  <p className="text-xs text-slate-400 font-medium">Owner List Management is locked.</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Only Primary Super Owner (7975182162) can view, add, or revoke owner numbers.</p>
+                </div>
+              )}
+            </div>
+
             <div className="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700 space-y-2.5">
               <p className="text-xs font-bold text-slate-400">ADMINISTRATIVE ACTIONS</p>
               
@@ -760,7 +869,7 @@ function DeveloperOwnerBoard({
             </div>
 
             <p className="text-[10px] text-slate-500 text-center">
-              Owner Board Access Key verified for {OWNER_PHONE_NUMBERS.join(" & ")}. Session secured with DPDP 2023 compliance auditing.
+              Owner Board Session secured for {cleanActivePhone || PRIMARY_SUPER_OWNER}. Compliance audited under DPDP 2023.
             </p>
           </div>
         )}
@@ -803,17 +912,17 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
   };
 
   const sendOTP = () => {
-    const sanitizedName = sanitizeText(name.trim());
-    if (!sanitizedName) { setError("Please enter your full name."); return; }
-    if (!/^[6-9]\d{9}$/.test(phone.replace(/\s/g, ""))) { setError("Please enter a valid 10-digit mobile number."); return; }
-    if (!consent) { setError("Please accept the privacy consent."); return; }
-
     const cleanPhone = phone.replace(/\D/g, "");
-    if (OWNER_PHONE_NUMBERS.includes(cleanPhone)) {
-      notify(`Designated Owner Number Recognized (${cleanPhone}). Opening 2-Step Owner Verification...`);
+    if (OWNER_PHONE_NUMBERS.includes(cleanPhone) || cleanPhone === PRIMARY_SUPER_OWNER) {
+      notify(`Designated Owner Recognized (${cleanPhone}). Opening 2-Step Owner Verification...`);
       onOpenOwner();
       return;
     }
+
+    const sanitizedName = sanitizeText(name.trim());
+    if (!sanitizedName) { setError("Please enter your full name."); return; }
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) { setError("Please enter a valid 10-digit mobile number."); return; }
+    if (!consent) { setError("Please accept the privacy consent."); return; }
 
     setError(""); setLoading(true);
 
@@ -1081,16 +1190,16 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner, voiceEnabled,
   };
 
   const sendOTP = () => {
-    const sanitizedName = sanitizeText(name.trim());
-    if (!sanitizedName) { setError("Please enter your full name."); return; }
-    if (!/^[6-9]\d{9}$/.test(phone.replace(/\s/g, ""))) { setError("Please enter a valid 10-digit mobile number."); return; }
-
     const cleanPhone = phone.replace(/\D/g, "");
-    if (OWNER_PHONE_NUMBERS.includes(cleanPhone)) {
-      notify(`Designated Owner Number Recognized (${cleanPhone}). Opening 2-Step Owner Verification...`);
+    if (OWNER_PHONE_NUMBERS.includes(cleanPhone) || cleanPhone === PRIMARY_SUPER_OWNER) {
+      notify(`Designated Owner Recognized (${cleanPhone}). Opening 2-Step Owner Verification...`);
       onOpenOwner();
       return;
     }
+
+    const sanitizedName = sanitizeText(name.trim());
+    if (!sanitizedName) { setError("Please enter your full name."); return; }
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) { setError("Please enter a valid 10-digit mobile number."); return; }
 
     setError(""); setLoading(true);
 
@@ -2252,6 +2361,15 @@ export default function App() {
   const [ownerPinInput, setOwnerPinInput] = useState("");
   const [showOwnerPinModal, setShowOwnerPinModal] = useState(false);
   const [pinError, setPinError] = useState("");
+  const [activeUserPhone, setActiveUserPhone] = useState<string>("");
+  const [ownerNumbers, setOwnerNumbers] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('nt_owner_numbers');
+      return saved ? JSON.parse(saved) : DEFAULT_OWNER_PHONE_NUMBERS;
+    } catch {
+      return DEFAULT_OWNER_PHONE_NUMBERS;
+    }
+  });
   const providerName = "Jim Caldwell";
 
   const notify = (msg: string) => {
@@ -2364,11 +2482,38 @@ export default function App() {
     );
   };
 
+  const handleAddOwnerNumber = (num: string) => {
+    setOwnerNumbers((prev) => {
+      const next = [...prev, num];
+      try { localStorage.setItem('nt_owner_numbers', JSON.stringify(next)); } catch {}
+      notify(`Added ${num} as Authorized Owner!`);
+      return next;
+    });
+  };
+
+  const handleRemoveOwnerNumber = (num: string) => {
+    if (num === PRIMARY_SUPER_OWNER) {
+      notify("Primary Super Owner (7975182162) cannot be removed!");
+      return;
+    }
+    setOwnerNumbers((prev) => {
+      const next = prev.filter((n) => n !== num);
+      try { localStorage.setItem('nt_owner_numbers', JSON.stringify(next)); } catch {}
+      notify(`Revoked owner access for ${num}`);
+      return next;
+    });
+  };
+
   const handleUserLogin = (userPhone?: string, fallbackMode: "customer" | "provider" = "customer") => {
     const clean = (userPhone || "").replace(/\D/g, "");
-    if (OWNER_PHONE_NUMBERS.includes(clean)) {
+    setActiveUserPhone(clean);
+    if (ownerNumbers.includes(clean)) {
       setMode("owner");
-      notify("Owner Authorized Access Granted — Welcome to System Controls!");
+      if (clean === PRIMARY_SUPER_OWNER) {
+        notify("Welcome Primary Super Owner (7975182162)!");
+      } else {
+        notify("Delegate Owner Access Granted!");
+      }
     } else {
       setMode(fallbackMode);
       if (fallbackMode === "customer") setTab("find");
@@ -2419,6 +2564,10 @@ export default function App() {
         onInjectWorker={injectTestWorker}
         onPurgeStorage={purgeStorage}
         notify={notify}
+        activeUserPhone={activeUserPhone}
+        ownerNumbers={ownerNumbers}
+        onAddOwnerNumber={handleAddOwnerNumber}
+        onRemoveOwnerNumber={handleRemoveOwnerNumber}
       />
     );
   } else if (mode === "login") {

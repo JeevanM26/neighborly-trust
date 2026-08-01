@@ -23,6 +23,8 @@ export interface UserProfile {
   created_at?: string;
 }
 
+export const PRIMARY_SUPER_OWNER = '7975182162';
+export const DEFAULT_OWNER_PHONE_NUMBERS = ['7975182162', '8867269712'];
 export const OWNER_PHONE_NUMBERS = ['7975182162', '8867269712'];
 
 export interface ProviderProfile {
