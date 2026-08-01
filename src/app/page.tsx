@@ -563,7 +563,7 @@ function DeveloperOwnerBoard({
   const [newOwnerInput, setNewOwnerInput] = useState("");
 
   const cleanActivePhone = activeUserPhone.replace(/\D/g, "");
-  const isSuperOwner = cleanActivePhone === PRIMARY_SUPER_OWNER || cleanActivePhone === "";
+  const isSuperOwner = cleanActivePhone === PRIMARY_SUPER_OWNER;
 
   useEffect(() => {
     // Audit Supabase Connection status
@@ -780,19 +780,15 @@ function DeveloperOwnerBoard({
         {tab === "controls" && (
           <div className="space-y-3">
             {/* SUPER ADMIN OWNER MANAGEMENT — ONLY VISIBLE TO PRIMARY SUPER OWNER 7975182162 */}
-            <div className="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700 space-y-3">
-              <p className="text-xs font-bold text-slate-400 flex items-center justify-between">
-                <span>OWNER ACCESS MANAGEMENT</span>
-                {isSuperOwner ? (
+            {isSuperOwner && (
+              <div className="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700 space-y-3">
+                <p className="text-xs font-bold text-slate-400 flex items-center justify-between">
+                  <span>OWNER ACCESS MANAGEMENT</span>
                   <span className="text-[10px] text-amber-400 font-extrabold flex items-center gap-1">
-                    <Key size={11} /> Primary Owner Access
+                    <Key size={11} /> Primary Owner Access Only
                   </span>
-                ) : (
-                  <span className="text-[10px] text-slate-500 italic">Restricted to 7975182162</span>
-                )}
-              </p>
+                </p>
 
-              {isSuperOwner ? (
                 <div className="space-y-2.5">
                   <div className="space-y-1.5">
                     {ownerNumbers.map((num) => (
@@ -834,14 +830,8 @@ function DeveloperOwnerBoard({
                     </button>
                   </div>
                 </div>
-              ) : (
-                <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 text-center">
-                  <Lock size={20} className="mx-auto text-slate-500 mb-1" />
-                  <p className="text-xs text-slate-400 font-medium">Owner List Management is locked.</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Only Primary Super Owner (7975182162) can view, add, or revoke owner numbers.</p>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700 space-y-2.5">
               <p className="text-xs font-bold text-slate-400">ADMINISTRATIVE ACTIONS</p>
