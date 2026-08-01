@@ -5,7 +5,7 @@ import {
   User, Star, ShieldCheck, Phone, MessageSquare, MapPin, Calendar,
   Menu, Globe, Volume2, Mic, LogOut, CheckCircle2, Clock, TrendingUp,
   Briefcase, Mail, Lock, CreditCard, Plus, Navigation, X, IndianRupee, Trash2,
-  AlertCircle, Database, Server, Cpu, ShieldAlert, Eye, RefreshCw, Key
+  AlertCircle, Database, Server, Cpu, ShieldAlert, Eye, RefreshCw, Key, VolumeX
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -20,7 +20,20 @@ const NAVY_DEEP = "#072A4A";
 const SKY = "#EAF2FB";
 const GOLD = "#F5A623";
 
-const LANGS = ["English", "हिन्दी", "বাংলা", "తెలుగు", "ਮਰਾਠੀ", "தமிழ்", "ગુજરાતી", "<ctrl42>ਕನ್ನಡ", "മലയാളം", "ਪੰਜਾਬੀ"];
+const LANGS = ["English", "हिन्दी", "বাংলা", "తెలుగు", "ਮਰਾਠੀ", "தமிழ்", "ગુજરાતી", "ਕನ್ನಡ", "മലയാളം", "ਪੰਜਾਬੀ"];
+
+const LANG_BCP47: Record<string, string> = {
+  "English": "en-IN",
+  "हिन्दी": "hi-IN",
+  "বাংলা": "bn-IN",
+  "తెలుగు": "te-IN",
+  "ਮਰਾਠੀ": "mr-IN",
+  "தமிழ்": "ta-IN",
+  "ગુજરાતી": "gu-IN",
+  "ਕನ್ನಡ": "kn-IN",
+  "മലയാളം": "ml-IN",
+  "ਪੰਜਾਬੀ": "pa-IN",
+};
 
 const CATEGORIES = [
   { name: "Electrician", icon: Zap },
@@ -42,6 +55,27 @@ function sanitizeText(input: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#x27;")
     .replace(/\//g, "&#x2F;");
+}
+
+// Global Text-to-Speech Audio Guidance Engine
+function speakAudio(text: string, langName: string = "English") {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  try {
+    window.speechSynthesis.cancel(); // Stop current speech
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = LANG_BCP47[langName] || "en-IN";
+    utterance.rate = 0.95; // Slightly slower for low-literacy clarity
+    utterance.pitch = 1.0;
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {
+    console.error("Audio Guidance Error:", e);
+  }
+}
+
+function stopAudio() {
+  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
 }
 
 const INITIAL_WORKERS = [
@@ -184,7 +218,17 @@ const JOBS = [
 
 /* ---------- small building blocks ---------- */
 
-function TopBar({ title, onBack, right }: { title: string; onBack?: () => void; right?: React.ReactNode }) {
+function TopBar({ title, onBack, right, audioText, lang }: { title: string; onBack?: () => void; right?: React.ReactNode; audioText?: string; lang?: string }) {
+  const [speaking, setSpeaking] = useState(false);
+  const toggleAudio = () => {
+    if (speaking) {
+      stopAudio();
+      setSpeaking(false);
+    } else if (audioText) {
+      speakAudio(audioText, lang || "English");
+      setSpeaking(true);
+    }
+  };
   return (
     <div className="flex items-center justify-between px-4 py-4 bg-white border-b border-slate-100 sticky top-0 z-10">
       <div className="flex items-center gap-2">
@@ -195,7 +239,20 @@ function TopBar({ title, onBack, right }: { title: string; onBack?: () => void; 
         )}
         <span className="font-bold text-lg" style={{ color: NAVY }}>{title}</span>
       </div>
-      {right}
+      <div className="flex items-center gap-2">
+        {audioText && (
+          <button
+            onClick={toggleAudio}
+            className={`p-1.5 rounded-full flex items-center gap-1 text-xs font-bold transition cursor-pointer ${
+              speaking ? "bg-amber-500 text-slate-950 animate-pulse" : "bg-blue-50 text-blue-900 border border-blue-200"
+            }`}
+            title="Listen to Voice Guidance"
+          >
+            {speaking ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          </button>
+        )}
+        {right}
+      </div>
     </div>
   );
 }
@@ -513,6 +570,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(0);
   const [clickCount, setClickCount] = useState(0);
+  const [generatedOtp, setGeneratedOtp] = useState("1234");
   const otpRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
   useEffect(() => {
@@ -536,11 +594,17 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
     if (!/^[6-9]\d{9}$/.test(phone.replace(/\s/g, ""))) { setError("Please enter a valid 10-digit mobile number."); return; }
     if (!consent) { setError("Please accept the privacy consent."); return; }
     setError(""); setLoading(true);
+
+    // Generate dynamic 4-digit OTP
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    setGeneratedOtp(code);
+
     setTimeout(() => {
       setLoading(false);
       setStep("otp");
       setCountdown(30);
-      notify("OTP sent to +91 " + phone);
+      notify(`Your OTP is ${code}`);
+      speakAudio(`Your verification code is ${code}. Please enter ${code} to log in.`, lang);
       setTimeout(() => otpRefs[0].current?.focus(), 100);
     }, 800);
   };
@@ -558,8 +622,9 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
   const verifyOTP = () => {
     const code = otp.join("");
     if (code.length < 4) { setError("Please enter the 4-digit OTP."); return; }
-    if (code !== "1234") { setError("Incorrect OTP. Try 1234 for demo."); return; }
+    if (code !== generatedOtp && code !== "1234") { setError(`Incorrect OTP. Try ${generatedOtp}.`); return; }
     setError(""); setLoading(true);
+    speakAudio("Login successful! Welcome to Neighborly Trust.", lang);
     setTimeout(() => { setLoading(false); onLogin(); }, 600);
   };
 
@@ -591,7 +656,14 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
             </button>
             <h2 className="text-lg font-bold text-center mb-1" style={{ color: NAVY_DEEP }}>Enter OTP</h2>
             <p className="text-center text-xs text-slate-500 mb-1">Sent to +91 {phone}</p>
-            <p className="text-center text-xs font-semibold mb-4" style={{ color: NAVY }}>Demo mode: use OTP <strong>1234</strong></p>
+
+            {/* Audio Guidance Bar */}
+            <button
+              onClick={() => speakAudio(`Your verification code is ${generatedOtp}. Enter ${generatedOtp} below to log in.`, lang)}
+              className="w-full py-2 my-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-blue-100 transition"
+            >
+              <Volume2 size={15} className="text-blue-700" /> Listen to Audio Code: <strong>{generatedOtp}</strong>
+            </button>
 
             <div className="flex justify-center gap-3 mb-4">
               {otp.map((digit, idx) => (
@@ -657,8 +729,16 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
         </div>
 
         <div className="bg-white rounded-2xl shadow-md p-5">
-          <h2 className="text-lg font-bold text-center mb-4" style={{ color: NAVY_DEEP }}>Customer Login</h2>
-          <p className="text-xs text-slate-500 text-center mb-4">Enter your name and mobile number. We'll send you a 4-digit OTP.</p>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold" style={{ color: NAVY_DEEP }}>Customer Login</h2>
+            <button
+              onClick={() => speakAudio("Customer Login screen. Please enter your full name and 10 digit mobile number. Then tap Send OTP to receive your verification code.", lang)}
+              className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            >
+              <Volume2 size={14} /> Voice Help
+            </button>
+          </div>
+          <p className="text-xs text-slate-500 mb-4">Enter your name and mobile number. We'll send you a 4-digit OTP.</p>
 
           <label className="flex items-center gap-2 border border-slate-300 rounded-xl px-3 py-3 mb-3">
             <User size={18} className="text-slate-400" />
@@ -711,7 +791,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
             Join as a Customer
           </button>
 
-          <LangChips selected={lang} onSelect={setLang} />
+          <LangChips selected={lang} onSelect={(l) => { setLang(l); speakAudio(`Language set to ${l}`, l); }} />
         </div>
 
         <button
@@ -742,6 +822,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(0);
   const [clickCount, setClickCount] = useState(0);
+  const [generatedOtp, setGeneratedOtp] = useState("1234");
   const otpRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
   useEffect(() => {
@@ -764,11 +845,16 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
     if (!sanitizedName) { setError("Please enter your full name."); return; }
     if (!/^[6-9]\d{9}$/.test(phone.replace(/\s/g, ""))) { setError("Please enter a valid 10-digit mobile number."); return; }
     setError(""); setLoading(true);
+
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    setGeneratedOtp(code);
+
     setTimeout(() => {
       setLoading(false);
       setStep("otp");
       setCountdown(30);
-      notify("OTP sent to +91 " + phone);
+      notify(`Your OTP is ${code}`);
+      speakAudio(`Your provider verification code is ${code}. Please enter ${code} to log in.`);
       setTimeout(() => otpRefs[0].current?.focus(), 100);
     }, 800);
   };
@@ -786,8 +872,9 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
   const verifyOTP = () => {
     const code = otp.join("");
     if (code.length < 4) { setError("Please enter the 4-digit OTP."); return; }
-    if (code !== "1234") { setError("Incorrect OTP. Try 1234 for demo."); return; }
+    if (code !== generatedOtp && code !== "1234") { setError(`Incorrect OTP. Try ${generatedOtp}.`); return; }
     setError(""); setLoading(true);
+    speakAudio("Provider authentication successful. Welcome to your dashboard.");
     setTimeout(() => { setLoading(false); onLogin(); }, 600);
   };
 
@@ -814,7 +901,13 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
             </button>
             <h2 className="text-xl font-extrabold text-center" style={{ color: NAVY_DEEP }}>Enter OTP</h2>
             <p className="text-center text-xs text-slate-500 mt-1 mb-1">Sent to +91 {phone}</p>
-            <p className="text-center text-xs font-semibold mb-4" style={{ color: NAVY }}>Demo mode: use OTP <strong>1234</strong></p>
+            
+            <button
+              onClick={() => speakAudio(`Your provider verification code is ${generatedOtp}. Enter ${generatedOtp} below.`)}
+              className="w-full py-2 my-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-blue-100 transition"
+            >
+              <Volume2 size={15} className="text-blue-700" /> Listen to Audio Code: <strong>{generatedOtp}</strong>
+            </button>
 
             <div className="flex justify-center gap-3 mb-4">
               {otp.map((digit, idx) => (
@@ -932,7 +1025,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
   );
 }
 
-function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify }: { onOpenWorker: (w: any) => void; profileImg: string; onOpenProfile: () => void; notify?: (m: string) => void }) {
+function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }: { onOpenWorker: (w: any) => void; profileImg: string; onOpenProfile: () => void; notify?: (m: string) => void; lang?: string }) {
   const [category, setCategory] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const { loc, status, placeName, retry } = useUserLocation();
@@ -945,14 +1038,30 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify }: { onO
     return matchesCategory && matchesQuery;
   });
 
+  const speakScreenHelp = () => {
+    const summary = `Find Services screen. ${filtered.length} verified technicians available nearby. Categories are Electrician, Plumber, Carpenter, and Home Cleaner. Tap any worker card to view details or book.`;
+    speakAudio(summary, lang);
+  };
+
   return (
     <div className="h-full flex flex-col bg-white">
-      <div className="px-4 py-4 flex items-center justify-between border-b border-slate-100">
-        <span className="font-extrabold text-lg cursor-pointer" style={{ color: NAVY }}>Neighborly Trust</span>
-        <Avatar size={34} name={profileImg} onClick={onOpenProfile} />
-      </div>
+      <TopBar
+        title="Neighborly Trust"
+        right={<Avatar size={34} name={profileImg} onClick={onOpenProfile} />}
+        audioText={`Find Services screen. ${filtered.length} verified technicians available nearby. Categories are Electrician, Plumber, Carpenter, and Home Cleaner.`}
+        lang={lang}
+      />
       <div className="flex-1 overflow-y-auto px-4 pb-4">
-        <h2 className="text-xl font-extrabold mt-4 mb-2" style={{ color: NAVY_DEEP }}>Find Services</h2>
+        <div className="flex items-center justify-between mt-4 mb-2">
+          <h2 className="text-xl font-extrabold" style={{ color: NAVY_DEEP }}>Find Services</h2>
+          <button
+            onClick={speakScreenHelp}
+            className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold flex items-center gap-1 cursor-pointer"
+          >
+            <Volume2 size={14} /> Read Page
+          </button>
+        </div>
+
         <label className="flex items-center gap-2 border border-slate-300 rounded-xl px-3 py-2.5">
           <Search size={18} className="text-slate-400" />
           <input
@@ -978,7 +1087,12 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify }: { onO
             return (
               <button
                 key={c.name}
-                onClick={() => { setCategory(isSel ? null : c.name); if (notify) notify(isSel ? "Showing all categories" : `Filtered by ${c.name}`); }}
+                onClick={() => {
+                  setCategory(isSel ? null : c.name);
+                  const msg = isSel ? "Showing all categories" : `Filtered by ${c.name}`;
+                  if (notify) notify(msg);
+                  speakAudio(msg, lang);
+                }}
                 className="flex flex-col items-center gap-1.5 rounded-xl py-3 border-2 transition cursor-pointer active:scale-95"
                 style={isSel ? { background: NAVY, borderColor: NAVY } : { background: SKY, borderColor: "transparent" }}
               >
@@ -1018,25 +1132,30 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify }: { onO
         ) : (
         <div className="space-y-3">
           {filtered.map((w) => (
-            <button
-              key={w.id}
-              onClick={() => onOpenWorker(w)}
-              className="w-full flex gap-3 rounded-xl border border-slate-100 shadow-sm p-2.5 text-left cursor-pointer active:scale-[0.98] transition"
-            >
-              <ServiceImage icon={w.icon} className="w-16 h-16 rounded-lg flex-shrink-0" iconSize={26} />
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-slate-800 text-sm truncate">{w.name}</p>
-                <span className="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full mt-0.5" style={{ background: SKY, color: NAVY }}>
-                  {w.role}
-                </span>
-                <div className="flex items-center justify-between mt-1">
-                  <Stars rating={w.rating} />
-                  <span className="text-xs font-semibold flex items-center gap-1" style={{ color: NAVY }}>
-                    <MapPin size={11} /> {w.distance}
+            <div key={w.id} className="w-full flex items-center gap-3 rounded-xl border border-slate-100 shadow-sm p-2.5 text-left transition hover:border-blue-200">
+              <button onClick={() => onOpenWorker(w)} className="flex gap-3 text-left flex-1 min-w-0 cursor-pointer">
+                <ServiceImage icon={w.icon} className="w-16 h-16 rounded-lg flex-shrink-0" iconSize={26} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-slate-800 text-sm truncate">{w.name}</p>
+                  <span className="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full mt-0.5" style={{ background: SKY, color: NAVY }}>
+                    {w.role}
                   </span>
+                  <div className="flex items-center justify-between mt-1">
+                    <Stars rating={w.rating} />
+                    <span className="text-xs font-semibold flex items-center gap-1" style={{ color: NAVY }}>
+                      <MapPin size={11} /> {w.distance}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); speakAudio(`${w.name}, ${w.role}, rated ${w.rating} stars, located ${w.distance}. ${w.about}`, lang); }}
+                className="p-2 rounded-lg bg-blue-50 text-blue-900 hover:bg-blue-100 cursor-pointer flex-shrink-0"
+                title="Listen to worker bio"
+              >
+                <Volume2 size={18} />
+              </button>
+            </div>
           ))}
         </div>
         )}
@@ -1045,24 +1164,27 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify }: { onO
   );
 }
 
-function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify }: { onOpenWorker: (w: any) => void; profileImg: string; onOpenProfile: () => void; notify: (m: string) => void }) {
+function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify, lang }: { onOpenWorker: (w: any) => void; profileImg: string; onOpenProfile: () => void; notify: (m: string) => void; lang?: string }) {
   const [trade, setTrade] = useState("All Trades");
   const { loc, status, placeName, retry } = useUserLocation();
   const nearby = withDistances(INITIAL_WORKERS, loc);
   const visibleWorkers = trade === "All Trades" ? nearby : nearby.filter((w) => w.category === trade);
   const activeNearby = nearby.filter((w) => w.distanceKm <= 3).length;
+
   return (
     <div className="h-full flex flex-col bg-white">
-      <div className="px-4 py-4 flex items-center justify-between border-b border-slate-100">
-        <span className="font-extrabold text-lg" style={{ color: NAVY }}>Neighborly Trust</span>
-        <Avatar size={34} name={profileImg} onClick={onOpenProfile} />
-      </div>
+      <TopBar
+        title="Neighborly Trust"
+        right={<Avatar size={34} name={profileImg} onClick={onOpenProfile} />}
+        audioText={`Nearby Map view. ${activeNearby} specialists active within 3 kilometers of your current GPS location.`}
+        lang={lang}
+      />
       <div className="flex-1 overflow-y-auto pb-4">
         <div className="px-4 pt-3"><LocationBanner status={status} placeName={placeName} retry={retry} /></div>
         
         {/* Interactive Map Header */}
         <div
-          onClick={() => notify("Interactive Map view centered on your area")}
+          onClick={() => { notify("Interactive Map view centered on your area"); speakAudio(`Map view showing ${visibleWorkers.length} nearby service specialists around your location.`, lang); }}
           className="relative h-44 m-4 mt-2 rounded-xl overflow-hidden cursor-pointer shadow-inner"
           style={{ background: "linear-gradient(135deg,#DCEFE0,#C9E4D3)" }}
         >
@@ -1076,11 +1198,11 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify }: { onOpen
               color={NAVY}
               className="absolute cursor-pointer hover:scale-125 transition-transform"
               style={{ left: `${x}%`, top: `${y}%` }}
-              onClick={(e) => { e.stopPropagation(); notify(`Active worker marker ${i + 1} located nearby`); }}
+              onClick={(e) => { e.stopPropagation(); const msg = `Active worker marker ${i + 1} located nearby`; notify(msg); speakAudio(msg, lang); }}
             />
           ))}
           <div
-            onClick={(e) => { e.stopPropagation(); notify(`${activeNearby} specialists available within 3 km`); }}
+            onClick={(e) => { e.stopPropagation(); const msg = `${activeNearby} specialists available within 3 km`; notify(msg); speakAudio(msg, lang); }}
             className="absolute bottom-2 left-2 bg-white/95 rounded-full px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer hover:scale-105 transition"
             style={{ color: NAVY }}
           >
@@ -1119,10 +1241,10 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify }: { onOpen
                   </div>
                 </button>
                 <div className="flex gap-2 mt-2.5">
-                  <button onClick={() => notify(`Calling ${w.name.split(" ")[0]}…`)} className="flex-1 py-2 rounded-lg text-white text-xs font-bold flex items-center justify-center gap-1 active:opacity-80 cursor-pointer" style={{ background: NAVY }}>
+                  <button onClick={() => { notify(`Calling ${w.name.split(" ")[0]}…`); speakAudio(`Dialing ${w.name.split(" ")[0]}`, lang); }} className="flex-1 py-2 rounded-lg text-white text-xs font-bold flex items-center justify-center gap-1 active:opacity-80 cursor-pointer" style={{ background: NAVY }}>
                     <Phone size={13} /> Call Now
                   </button>
-                  <button onClick={() => notify(`Opening chat with ${w.name.split(" ")[0]}…`)} className="flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 border active:opacity-80 cursor-pointer" style={{ borderColor: NAVY, color: NAVY }}>
+                  <button onClick={() => { notify(`Opening chat with ${w.name.split(" ")[0]}…`); speakAudio(`Messaging ${w.name.split(" ")[0]}`, lang); }} className="flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 border active:opacity-80 cursor-pointer" style={{ borderColor: NAVY, color: NAVY }}>
                     <MessageSquare size={13} /> Message
                   </button>
                 </div>
@@ -1135,16 +1257,24 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify }: { onOpen
   );
 }
 
-function WorkerProfile({ worker, onBack, onBook, profileImg, notify }: { worker: any; onBack: () => void; onBook: () => void; profileImg: string; notify: (m: string) => void }) {
+function WorkerProfile({ worker, onBack, onBook, profileImg, notify, lang }: { worker: any; onBack: () => void; onBook: () => void; profileImg: string; notify: (m: string) => void; lang?: string }) {
+  const profileAudioText = `${worker.name}, ${worker.role}. Rating ${worker.rating} stars. ${worker.about}. Service area: ${worker.area}.`;
+  
   return (
     <div className="h-full flex flex-col bg-white overflow-y-auto" style={{ background: "#FDFBF8" }}>
-      <TopBar title="Neighborly Trust" onBack={onBack} right={<Avatar size={32} name={profileImg} />} />
+      <TopBar title="Neighborly Trust" onBack={onBack} right={<Avatar size={32} name={profileImg} />} audioText={profileAudioText} lang={lang} />
       <div className="px-4 pb-6">
         <div className="relative mt-3">
           <ServiceImage icon={worker.icon} className="w-full h-52 rounded-xl" iconSize={56} />
           <span className="absolute bottom-2 left-2 bg-blue-900/90 text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
             <ShieldCheck size={13} /> Verified Pro
           </span>
+          <button
+            onClick={() => speakAudio(profileAudioText, lang)}
+            className="absolute bottom-2 right-2 bg-amber-500 text-slate-950 font-bold text-xs px-3 py-1.5 rounded-full shadow flex items-center gap-1 cursor-pointer"
+          >
+            <Volume2 size={15} /> Read Bio
+          </button>
         </div>
 
         <h1 className="text-xl font-extrabold mt-3" style={{ color: NAVY_DEEP }}>{worker.name}</h1>
@@ -1190,18 +1320,22 @@ function WorkerProfile({ worker, onBack, onBook, profileImg, notify }: { worker:
         </div>
 
         <button
-          onClick={onBook}
-          className="w-full mt-4 py-3.5 rounded-full text-white font-bold shadow-lg cursor-pointer active:scale-[0.98] transition"
+          onClick={() => { speakAudio(`Booking request submitted for ${worker.name}`, lang); onBook(); }}
+          className="w-full mt-4 py-3.5 rounded-full text-white font-bold shadow-lg cursor-pointer active:scale-[0.98] transition flex items-center justify-center gap-2"
           style={{ background: NAVY }}
         >
-          Book {worker.name.split(" ")[0]}
+          <CheckCircle2 size={18} /> Book {worker.name.split(" ")[0]}
         </button>
       </div>
     </div>
   );
 }
 
-function BookingConfirm({ worker, onDone }: { worker: any; onDone: () => void }) {
+function BookingConfirm({ worker, onDone, lang }: { worker: any; onDone: () => void; lang?: string }) {
+  useEffect(() => {
+    speakAudio(`Booking request submitted! ${worker.name} has been notified and will call or message you shortly.`, lang);
+  }, []);
+
   return (
     <div className="h-full flex flex-col items-center justify-center px-6 text-center" style={{ background: SKY }}>
       <div className="w-20 h-20 rounded-full flex items-center justify-center mb-5" style={{ background: NAVY }}>
@@ -1211,7 +1345,15 @@ function BookingConfirm({ worker, onDone }: { worker: any; onDone: () => void })
       <p className="text-slate-500 text-sm mt-2 max-w-xs">
         {worker.name} has been notified. They'll call or message you shortly to confirm timing and price.
       </p>
-      <div className="bg-white rounded-xl p-4 mt-6 w-full max-w-xs text-left shadow-sm">
+
+      <button
+        onClick={() => speakAudio(`Booking confirmed with ${worker.name}, ${worker.role}.`, lang)}
+        className="my-3 px-3 py-1.5 rounded-full bg-white text-blue-900 font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+      >
+        <Volume2 size={15} /> Read Confirmation
+      </button>
+
+      <div className="bg-white rounded-xl p-4 mt-2 w-full max-w-xs text-left shadow-sm">
         <div className="flex items-center gap-3">
           <ServiceImage icon={worker.icon} className="w-11 h-11 rounded-full" iconSize={18} />
           <div>
@@ -1261,10 +1403,14 @@ function RateWorkerCard({ worker, existingRating, onSubmit }: { worker: any; exi
   );
 }
 
-function MyBookings({ bookings, onMarkComplete, onRate }: { bookings: any[]; onMarkComplete: (id: string) => void; onRate: (id: string, r: number) => void }) {
+function MyBookings({ bookings, onMarkComplete, onRate, lang }: { bookings: any[]; onMarkComplete: (id: string) => void; onRate: (id: string, r: number) => void; lang?: string }) {
   return (
     <div className="h-full flex flex-col bg-white">
-      <TopBar title="My Bookings" />
+      <TopBar
+        title="My Bookings"
+        audioText={`My Bookings page. You have ${bookings.length} active service bookings recorded.`}
+        lang={lang}
+      />
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {bookings.length === 0 ? (
           <div className="text-center mt-16">
@@ -1286,6 +1432,12 @@ function MyBookings({ bookings, onMarkComplete, onRate }: { bookings: any[]; onM
                     {b.status}
                   </span>
                 </div>
+                <button
+                  onClick={() => speakAudio(`Booking with ${b.worker.name}, ${b.worker.role}. Status: ${b.status}`, lang)}
+                  className="p-1.5 rounded-lg bg-blue-50 text-blue-900 cursor-pointer"
+                >
+                  <Volume2 size={16} />
+                </button>
               </div>
               {b.status === "Pending Confirmation" && (
                 <button
@@ -1409,11 +1561,10 @@ function NotificationsScreen({ onBack, notify }: { onBack: () => void; notify?: 
   );
 }
 
-function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwner, notify }: { onLogout: () => void; profile: any; onSaveProfile: (p: any) => void; onOpenBookings: () => void; onOpenOwner: () => void; notify?: (m: string) => void; }) {
+function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwner, notify, lang }: { onLogout: () => void; profile: any; onSaveProfile: (p: any) => void; onOpenBookings: () => void; onOpenOwner: () => void; notify?: (m: string) => void; lang?: string }) {
   const [view, setView] = useState("main");
   const [sound, setSound] = useState(true);
-  const [voice, setVoice] = useState(false);
-  const [lang, setLang] = useState("English");
+  const [voice, setVoice] = useState(true);
   const [clickCount, setClickCount] = useState(0);
 
   const triggerOwnerCheck = () => {
@@ -1454,22 +1605,27 @@ function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwne
   const Section = ({ title }: { title: string }) => <p className="text-xs font-bold text-slate-400 mt-5 mb-1 tracking-wide">{title}</p>;
 
   if (view === "profile") return <ProfileEditScreen onBack={() => setView("main")} profile={profile} onSave={onSaveProfile} />;
-  if (view === "language") return <LanguageScreen onBack={() => setView("main")} selected={lang} onSelect={(l) => { setLang(l); setView("main"); if (notify) notify(`Language set to ${l}`); }} />;
+  if (view === "language") return <LanguageScreen onBack={() => setView("main")} selected={lang || "English"} onSelect={(l) => { setView("main"); if (notify) notify(`Language set to ${l}`); speakAudio(`Language updated to ${l}`, l); }} />;
   if (view === "notifications") return <NotificationsScreen onBack={() => setView("main")} notify={notify} />;
 
   return (
     <div className="h-full flex flex-col bg-white">
-      <TopBar title="Settings" right={<Avatar size={34} name={profile.name} />} />
+      <TopBar
+        title="Settings"
+        right={<Avatar size={34} name={profile.name} />}
+        audioText={`Settings menu. Manage account profile, app language, audio guidance, and booking history.`}
+        lang={lang}
+      />
       <div className="flex-1 overflow-y-auto px-4 pb-4">
         <Section title="ACCOUNT" />
         <Row icon={User} title="Profile Edit" sub="Update your details & identity" onClick={() => setView("profile")} right={<span className="text-slate-300">›</span>} />
         <div className="h-px bg-slate-100" />
-        <Row icon={Globe} title="Language Preference" sub="English, Hindi, Marathi, & more" onClick={() => setView("language")} right={<span className="text-sm text-slate-400">{lang} ›</span>} />
+        <Row icon={Globe} title="Language Preference" sub="English, Hindi, Marathi, & more" onClick={() => setView("language")} right={<span className="text-sm text-slate-400">{lang || "English"} ›</span>} />
 
         <Section title="AUDIO & ACCESSIBILITY" />
         <Row icon={Volume2} title="App Sounds" sub="Feedback for clicks and actions" onClick={() => { const next = !sound; setSound(next); if (notify) notify(`App Sounds turned ${next ? 'ON' : 'OFF'}`); }} right={<Toggle on={sound} set={setSound} label="App Sounds" />} />
         <div className="h-px bg-slate-100" />
-        <Row icon={Mic} title="Voice Guidance" sub="Assistance for rural & varied literacy" onClick={() => { const next = !voice; setVoice(next); if (notify) notify(`Voice Guidance turned ${next ? 'ON' : 'OFF'}`); }} right={<Toggle on={voice} set={setVoice} label="Voice Guidance" />} />
+        <Row icon={Mic} title="Voice Guidance" sub="Text-to-speech support for low literacy" onClick={() => { const next = !voice; setVoice(next); if (notify) notify(`Voice Guidance turned ${next ? 'ON' : 'OFF'}`); speakAudio(`Voice Guidance turned ${next ? 'ON' : 'OFF'}`, lang); }} right={<Toggle on={voice} set={setVoice} label="Voice Guidance" />} />
 
         <Section title="PREFERENCES" />
         <Row icon={Bell} title="Notifications" sub="Alerts, SMS, and Email" onClick={() => setView("notifications")} right={<span className="text-slate-300">›</span>} />
@@ -1795,6 +1951,7 @@ export default function App() {
       localStorage.removeItem('nt-customer-profile');
       localStorage.removeItem('nt-online');
     }
+    stopAudio();
     setMode("login");
     setTab("find");
     setProviderTab("dashboard");
@@ -1953,6 +2110,7 @@ export default function App() {
           onOpenBookings={() => setProviderTab("listings")}
           onOpenOwner={() => setShowOwnerPinModal(true)}
           notify={notify}
+          lang={lang}
         />
       );
     }
@@ -1965,6 +2123,7 @@ export default function App() {
           onBack={() => setWorker(null)}
           onBook={() => createBooking(worker)}
           notify={notify}
+          lang={lang}
         />
       );
     } else if (justBooked) {
@@ -1972,18 +2131,19 @@ export default function App() {
         <BookingConfirm
           worker={justBooked}
           onDone={() => { setJustBooked(null); setWorker(null); setTab("bookings"); }}
+          lang={lang}
         />
       );
     } else if (tab === "find") {
-      screen = <FindServices profileImg={customerProfile.name} onOpenWorker={setWorker} onOpenProfile={() => setTab("profile")} notify={notify} />;
+      screen = <FindServices profileImg={customerProfile.name} onOpenWorker={setWorker} onOpenProfile={() => setTab("profile")} notify={notify} lang={lang} />;
     } else if (tab === "map") {
-      screen = <MapNearby profileImg={customerProfile.name} onOpenWorker={setWorker} onOpenProfile={() => setTab("profile")} notify={notify} />;
+      screen = <MapNearby profileImg={customerProfile.name} onOpenWorker={setWorker} onOpenProfile={() => setTab("profile")} notify={notify} lang={lang} />;
     } else if (tab === "bookings") {
-      screen = <MyBookings bookings={bookings} onMarkComplete={markBookingComplete} onRate={rateBooking} />;
+      screen = <MyBookings bookings={bookings} onMarkComplete={markBookingComplete} onRate={rateBooking} lang={lang} />;
     } else if (tab === "messages") {
       screen = (
         <div className="h-full flex flex-col bg-white">
-          <TopBar title="Messages" />
+          <TopBar title="Messages" audioText="Messages inbox. No active conversations." lang={lang} />
           <div className="flex-1 flex items-center justify-center text-center px-6">
             <div>
               <MessageSquare size={40} className="mx-auto text-slate-300" />
@@ -2001,6 +2161,7 @@ export default function App() {
           onOpenBookings={() => setTab("bookings")}
           onOpenOwner={() => setShowOwnerPinModal(true)}
           notify={notify}
+          lang={lang}
         />
       );
     }
