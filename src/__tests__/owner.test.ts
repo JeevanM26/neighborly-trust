@@ -5,7 +5,7 @@ import { sortProvidersByDistanceAndFeatured } from '../lib/commission';
 describe('Owner Access & Control System', () => {
   it('recognizes designated owner phone numbers', () => {
     expect(OWNER_PHONE_NUMBERS).toContain('7975182162');
-    expect(OWNER_PHONE_NUMBERS).toContain('8867268712');
+    expect(OWNER_PHONE_NUMBERS).toContain('8867269712');
   });
 
   it('filters out blacklisted providers from search results', () => {

@@ -23,7 +23,7 @@ export interface UserProfile {
   created_at?: string;
 }
 
-export const OWNER_PHONE_NUMBERS = ['7975182162', '8867268712'];
+export const OWNER_PHONE_NUMBERS = ['7975182162', '8867269712'];
 
 export interface ProviderProfile {
   id: string;
