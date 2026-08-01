@@ -10,9 +10,9 @@ import {
 import { supabase } from "@/lib/supabase";
 
 /* ---------------------------------------------------------
-   NEIGHBORLY TRUST — High Precision & Sharpness Engine
+   NEIGHBORLY TRUST — High Precision & Multi-lingual Engine
    Palette: Deep Navy #0B3D66 / Ultra Deep #041B30 / Sky Crisp #EBF3FC
-   Typography & UI: High Contrast Sharp Borders & Instant Voice (0ms Lag)
+   Typography & UI: Clean Multi-lingual Sync (Kannada, Hindi, Telugu, Tamil, Marathi...)
 --------------------------------------------------------- */
 
 const NAVY = "#0B3D66";
@@ -20,14 +20,14 @@ const NAVY_DEEP = "#041B30";
 const SKY = "#EBF3FC";
 const GOLD = "#F5A623";
 
-const LANGS = ["English", "ಹಿन्दी", "বাংলা", "తెలుగు", "ਮਰਾਠੀ", "தமிழ்", "ગુજરાતી", "ಕನ್ನಡ", "മലയാളം", "ਪੰਜਾਬੀ"];
+const LANGS = ["English", "हिंदी", "বাংলা", "తెలుగు", "मराठी", "தமிழ்", "ગુજરાતી", "ಕನ್ನಡ", "മലയാളം", "ਪੰਜਾਬੀ"];
 
 const LANG_BCP47: Record<string, string> = {
   "English": "en-IN",
-  "ಹಿन्दी": "hi-IN",
+  "हिंदी": "hi-IN",
   "বাংলা": "bn-IN",
   "తెలుగు": "te-IN",
-  "ਮਰਾਠੀ": "mr-IN",
+  "मराठी": "mr-IN",
   "தமிழ்": "ta-IN",
   "ગુજરાતી": "gu-IN",
   "ಕನ್ನಡ": "kn-IN",
@@ -35,21 +35,35 @@ const LANG_BCP47: Record<string, string> = {
   "ਪੰਜਾਬੀ": "pa-IN",
 };
 
-// Sharp, Ultra-Crisp Simple Words Dictionary
+// Multi-lingual Audio & Simple Words Helper
 function getLoginHelp(lang: string) {
-  if (lang === "ಕನ್ನಡ") return "ಹೆಸರು ಮತ್ತು ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಹಾಕಿ. ಓಟಿಪಿ ಒತ್ತಿ.";
-  if (lang === "ಹಿन्दी") return "नाम और मोबाइल नंबर डालें। ओटीपी दबाएं।";
-  if (lang === "తెలుగు") return "పేరు మరియు మొబైల్ నంబర్ వేయండి.";
-  if (lang === "தமிழ்") return "பெயர் மற்றும் மொபைல் எண் உள்ளிடவும்.";
-  return "Enter name and mobile number. Tap Send OTP.";
+  switch (lang) {
+    case "ಕನ್ನಡ": return "ಹೆಸರು ಮತ್ತು ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಹಾಕಿ. ಓಟಿಪಿ ಒತ್ತಿ.";
+    case "हिंदी": return "नाम और मोबाइल नंबर डालें। ओटीपी दबाएं।";
+    case "తెలుగు": return "పేరు మరియు మొబైల్ నంబర్ వేయండి. ఓటీపీ నొక్కండి.";
+    case "தமிழ்": return "பெயர் மற்றும் மொபைல் எண் உள்ளிடவும். OTP அழுத்தவும்.";
+    case "मराठी": return "नाव आणि मोबाईल नंबर टाका. ओटीपी दाबा.";
+    case "বাংলা": return "নাম এবং মোবাইল নম্বর দিন। ওটিপি চাপুন।";
+    case "ગુજરાતી": return "નામ અને મોબાઈલ નંબર નાખો. OTP દબાવો.";
+    case "മലയാളം": return "പേരും മൊബൈൽ നമ്പറും നൽകുക. OTP അമർത്തുക.";
+    case "ਪੰਜਾਬੀ": return "ਨਾਮ ਅਤੇ ਮੋਬਾਈਲ ਨੰਬਰ ਪਾਓ। OTP ਦਬਾਓ।";
+    default: return "Enter name and mobile number. Tap Send OTP.";
+  }
 }
 
 function getOtpHelp(code: string, lang: string) {
-  if (lang === "ಕನ್ನಡ") return `ಓಟಿಪಿ ${code}.`;
-  if (lang === "ಹಿन्दी") return `ओटीपी ${code}.`;
-  if (lang === "తెలుగు") return `ఓటీపీ ${code}.`;
-  if (lang === "தமிழ்") return `OTP ${code}.`;
-  return `OTP ${code}.`;
+  switch (lang) {
+    case "ಕನ್ನಡ": return `ಓಟಿಪಿ ಸಂಖ್ಯೆ ${code}.`;
+    case "हिंदी": return `ओटीपी कोड ${code}.`;
+    case "తెలుగు": return `ఓటీపీ కోడ్ ${code}.`;
+    case "தமிழ்": return `OTP எண் ${code}.`;
+    case "मराठी": return `ओटीपी कोड ${code}.`;
+    case "বাংলা": return `ওটিপি কোড ${code}.`;
+    case "ગુજરાતી": return `OTP કોડ ${code}.`;
+    case "മലയാളം": return `OTP കോഡ് ${code}.`;
+    case "ਪੰਜਾਬੀ": return `OTP ਕੋਡ ${code}.`;
+    default: return `OTP code is ${code}.`;
+  }
 }
 
 const NATIVE_JOB_VOICE: Record<string, Record<string, string>> = {
@@ -58,40 +72,48 @@ const NATIVE_JOB_VOICE: Record<string, Record<string, string>> = {
     "Plumber": "ಪ್ಲಂಬರ್. ಪೈಪ್ ನಳ ಕೆಲಸ.",
     "Carpenter": "ಕಾರ್ಪೆಂಟರ್. ಮರದ ಕೆಲಸ.",
     "Home Clean": "ಕ್ಲೀನರ್. ಮನೆ ಸ್ವಚ್ಛ.",
-    "Call": "ಕರೆ ಮಾಡಿ",
-    "Book": "ಬುಕ್ ಮಾಡಿ",
   },
-  "ಹಿन्दी": {
+  "हिंदी": {
     "Electrician": "इलेक्ट्रिशियन। बिजली काम।",
     "Plumber": "प्लंबर। नल पाइप काम।",
     "Carpenter": "कारपेंटर। लकड़ी काम।",
     "Home Clean": "होम क्लीनर। सफाई काम।",
-    "Call": "कॉल करें",
-    "Book": "बुक करें",
   },
   "తెలుగు": {
     "Electrician": "ఎలక్ట్రీషియన్. కరెంట్ పని.",
     "Plumber": "ప్లాంబర్. పైపు పని.",
     "Carpenter": "కార్పెంటర్. చెక్క పని.",
-    "Home Clean": "ಕ್ಲೀನರ್. ఇల్లు శుభ్రం.",
-    "Call": "కాల్ చేయండి",
-    "Book": "బుక్ చేయండి",
+    "Home Clean": "క్లీనర్. ఇల్లు శుభ్రం.",
   },
   "தமிழ்": {
     "Electrician": "எலக்ட்ரீஷியன். மின்சார வேலை.",
     "Plumber": "பிளம்பர். குழாய் வேலை.",
     "Carpenter": "கார்பெண்டர். மர வேலை.",
     "Home Clean": "கிளீனர். சுத்தம் வேலை.",
-    "Call": "அழைக்கவும்",
-    "Book": "புக் செய்யவும்",
+  },
+  "मराठी": {
+    "Electrician": "इलेक्ट्रिशियन. विजेचे काम.",
+    "Plumber": "प्लंबर. नळ पाईप काम.",
+    "Carpenter": "सुतार. लाकडी काम.",
+    "Home Clean": "क्लीनर. घर स्वच्छता.",
+  },
+  "বাংলা": {
+    "Electrician": "ইলেক্ট্রিশিয়ান। বিজলীর কাজ।",
+    "Plumber": "প্লাম্বার। পাইপ ও কলের কাজ।",
+    "Carpenter": "কাঠমিস্ত্রি। কাঠের কাজ।",
+    "Home Clean": "ক্লিনার। ঘর পরিষ্কার।",
+  },
+  "ગુજરાતી": {
+    "Electrician": "ઈલેક્ટ્રિશિયન. વાયરિંગ કામ.",
+    "Plumber": "પ્લમ્બર. નળ પાઇપ કામ.",
+    "Carpenter": "સુથાર. લાકડાનું કામ.",
+    "Home Clean": "ક્લીનર. ઘર સફાઈ.",
   },
   "English": {
     "Electrician": "Electrician. Electrical work.",
     "Plumber": "Plumber. Pipe repairs.",
     "Carpenter": "Carpenter. Woodwork.",
     "Home Clean": "Cleaner. Deep cleaning.",
-    "Call": "Call now",
-    "Book": "Book now",
   }
 };
 
@@ -146,11 +168,10 @@ function sanitizeText(input: string): string {
     .replace(/\//g, "&#x2F;");
 }
 
-// Zero-Latency Sharp Text-to-Speech Engine (Pre-warmed, 0ms Lag)
+// Zero-Latency Multi-lingual Text-to-Speech Engine
 let globalSpeakListener: ((text: string) => void) | null = null;
 let cachedVoices: SpeechSynthesisVoice[] = [];
 
-// Pre-warm voices on startup for zero lag
 if (typeof window !== "undefined" && "speechSynthesis" in window) {
   cachedVoices = window.speechSynthesis.getVoices();
   window.speechSynthesis.onvoiceschanged = () => {
@@ -161,32 +182,29 @@ if (typeof window !== "undefined" && "speechSynthesis" in window) {
 function speakAudio(text: string, langName: string = "English") {
   if (typeof window === "undefined") return;
 
-  // Broadcast instantly to visual subtitle banner
   if (globalSpeakListener) {
     globalSpeakListener(text);
   }
 
-  const cleanLang = langName.replace(/[^\u0C80-\u0CFF\w]/g, "").trim();
-  const targetLang = LANG_BCP47[langName] || LANG_BCP47[cleanLang] || "en-IN";
+  // Exact BCP47 lookup for multi-lingual audio
+  const targetLang = LANG_BCP47[langName] || "en-IN";
   const shortLang = targetLang.split("-")[0];
 
-  // Zero-Lag Native Speech Synthesis Execution
   if ("speechSynthesis" in window) {
     try {
       const synth = window.speechSynthesis;
-      synth.cancel(); // Stop prior audio instantly
+      synth.cancel();
       if (synth.paused) synth.resume();
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = targetLang;
-      utterance.rate = 1.05; // Sharp, fast, crisp rate (no sluggish delay)
-      utterance.pitch = 1.05; // Bright articulate pitch
+      utterance.rate = 1.05;
+      utterance.pitch = 1.05;
       utterance.volume = 1.0;
 
-      // Pick matching voice instantly from cache
       const voices = cachedVoices.length > 0 ? cachedVoices : synth.getVoices();
       if (voices && voices.length > 0) {
-        const match = voices.find((v) => v.lang === targetLang || v.lang.startsWith(shortLang));
+        const match = voices.find((v) => v.lang.toLowerCase() === targetLang.toLowerCase() || v.lang.toLowerCase().startsWith(shortLang));
         if (match) utterance.voice = match;
       }
 
@@ -197,7 +215,6 @@ function speakAudio(text: string, langName: string = "English") {
     }
   }
 
-  // Backup Stream if native synth is unavailable
   try {
     const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${shortLang}&client=tw-ob`;
     const audio = new Audio(ttsUrl);
@@ -794,7 +811,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedOtp(code);
 
-    // Speak ultra-simple OTP code synchronously with 0ms delay
+    // Speak ultra-simple OTP code synchronously in selected language
     speakAudio(getOtpHelp(code, lang), lang);
 
     setTimeout(() => {
@@ -1282,7 +1299,7 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
           )}
         </div>
         
-        {/* Visual Category Photo Cards — Sharp High-Contrast Borders */}
+        {/* Visual Category Photo Cards — Silent Filter */}
         <div className="grid grid-cols-2 gap-2.5">
           {CATEGORIES.map((c) => {
             const isSel = category === c.name;
@@ -1765,7 +1782,7 @@ function NotificationsScreen({ onBack, notify }: { onBack: () => void; notify?: 
   );
 }
 
-function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwner, notify, lang }: { onLogout: () => void; profile: any; onSaveProfile: (p: any) => void; onOpenBookings: () => void; onOpenOwner: () => void; notify?: (m: string) => void; lang?: string }) {
+function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwner, notify, lang, onSetLang }: { onLogout: () => void; profile: any; onSaveProfile: (p: any) => void; onOpenBookings: () => void; onOpenOwner: () => void; notify?: (m: string) => void; lang?: string; onSetLang: (l: string) => void }) {
   const [view, setView] = useState("main");
   const [sound, setSound] = useState(true);
   const [voice, setVoice] = useState(true);
@@ -1809,7 +1826,20 @@ function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwne
   const Section = ({ title }: { title: string }) => <p className="text-xs font-black text-slate-500 mt-5 mb-1 tracking-wider uppercase">{title}</p>;
 
   if (view === "profile") return <ProfileEditScreen onBack={() => setView("main")} profile={profile} onSave={onSaveProfile} />;
-  if (view === "language") return <LanguageScreen onBack={() => setView("main")} selected={lang || "English"} onSelect={(l) => { setView("main"); if (notify) notify(`Language set to ${l}`); speakAudio(`Language updated to ${l}`, l); }} />;
+  if (view === "language") {
+    return (
+      <LanguageScreen
+        onBack={() => setView("main")}
+        selected={lang || "English"}
+        onSelect={(l) => {
+          onSetLang(l);
+          setView("main");
+          if (notify) notify(`Language set to ${l}`);
+          speakAudio(getLoginHelp(l), l);
+        }}
+      />
+    );
+  }
   if (view === "notifications") return <NotificationsScreen onBack={() => setView("main")} notify={notify} />;
 
   return (
@@ -2315,6 +2345,7 @@ export default function App() {
           onOpenOwner={() => setShowOwnerPinModal(true)}
           notify={notify}
           lang={lang}
+          onSetLang={setLang}
         />
       );
     }
@@ -2366,6 +2397,7 @@ export default function App() {
           onOpenOwner={() => setShowOwnerPinModal(true)}
           notify={notify}
           lang={lang}
+          onSetLang={setLang}
         />
       );
     }
