@@ -10,7 +10,7 @@ export interface TelegramConfig {
 
 const DEFAULT_CONFIG: TelegramConfig = {
   botToken: typeof process !== 'undefined' && process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN ? process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN : '',
-  chatId: '',
+  chatId: '7258080421',
 };
 
 // Generate a random 4-digit numeric OTP
@@ -30,7 +30,7 @@ export function getTelegramConfig(): TelegramConfig {
     const envToken = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN || '' : '';
     return {
       botToken: savedToken !== null && savedToken !== '' ? savedToken : envToken,
-      chatId: savedChatId !== null ? savedChatId : DEFAULT_CONFIG.chatId,
+      chatId: savedChatId !== null && savedChatId !== '' ? savedChatId : DEFAULT_CONFIG.chatId,
     };
   } catch {
     return DEFAULT_CONFIG;
@@ -54,22 +54,41 @@ export async function sendTelegramOtp(
 ): Promise<{ success: boolean; message: string }> {
   const config = customConfig || getTelegramConfig();
 
-  if (!config.botToken || !config.chatId) {
+  let targetChatId = config.chatId || '7258080421';
+  let botToken = config.botToken || (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN || '' : '');
+
+  if (!targetChatId && botToken) {
+    try {
+      const updatesRes = await fetch(`https://api.telegram.org/bot${botToken}/getUpdates`);
+      const updatesData = await updatesRes.json();
+      if (updatesData.ok && updatesData.result?.length > 0) {
+        const lastMsg = updatesData.result[updatesData.result.length - 1]?.message;
+        if (lastMsg?.chat?.id) {
+          targetChatId = lastMsg.chat.id.toString();
+          saveTelegramConfig({ botToken, chatId: targetChatId });
+        }
+      }
+    } catch {
+      // Auto-fetch fallback
+    }
+  }
+
+  if (!botToken || !targetChatId) {
     return {
       success: false,
-      message: 'Telegram Bot Token or Chat ID not set. (Using local demo code)',
+      message: 'Telegram Bot Token or Chat ID not set.',
     };
   }
 
   const text = `🔐 *Neighborly Trust — Owner Login OTP*\n\n📱 Owner Mobile: \`+91 ${phone}\`\n💬 Your 4-digit OTP is: *${passcode}*\n\n⏰ Valid for 5 minutes. Do not share this OTP with anyone.`;
 
   try {
-    const url = `https://api.telegram.org/bot${config.botToken}/sendMessage`;
+    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        chat_id: config.chatId,
+        chat_id: targetChatId,
         text: text,
         parse_mode: 'Markdown',
       }),
