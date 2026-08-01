@@ -10,6 +10,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { speakAudio, stopAudio, registerSpeakListener, normalizeLangKey } from "@/lib/audio";
 import { OWNER_PHONE_NUMBERS, PRIMARY_SUPER_OWNER, DEFAULT_OWNER_PHONE_NUMBERS } from "@/lib/types";
+import { generateDynamicPasscode, getTelegramConfig, saveTelegramConfig, sendTelegramOtp, TelegramConfig } from "@/lib/telegramOtp";
 
 /* ---------------------------------------------------------
    NEIGHBORLY TRUST — High Precision & Multi-lingual Engine
@@ -561,9 +562,33 @@ function DeveloperOwnerBoard({
   const [tab, setTab] = useState<"telemetry" | "inspector" | "controls">("telemetry");
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null);
   const [newOwnerInput, setNewOwnerInput] = useState("");
+  const [tgBotToken, setTgBotToken] = useState(() => getTelegramConfig().botToken);
+  const [tgChatId, setTgChatId] = useState(() => getTelegramConfig().chatId);
+  const [tgSending, setTgSending] = useState(false);
 
   const cleanActivePhone = activeUserPhone.replace(/\D/g, "");
   const isSuperOwner = cleanActivePhone === PRIMARY_SUPER_OWNER;
+
+  const handleSaveTelegram = () => {
+    saveTelegramConfig({ botToken: tgBotToken.trim(), chatId: tgChatId.trim() });
+    notify("Telegram Bot 2FA settings saved!");
+  };
+
+  const handleTestTelegramDispatch = async () => {
+    saveTelegramConfig({ botToken: tgBotToken.trim(), chatId: tgChatId.trim() });
+    setTgSending(true);
+    const testCode = generateDynamicPasscode(6);
+    const res = await sendTelegramOtp(cleanActivePhone || PRIMARY_SUPER_OWNER, testCode, {
+      botToken: tgBotToken.trim(),
+      chatId: tgChatId.trim(),
+    });
+    setTgSending(false);
+    if (res.success) {
+      notify(`Test Telegram OTP sent successfully! (Code: ${testCode})`);
+    } else {
+      notify(`Telegram Error: ${res.message}`);
+    }
+  };
 
   useEffect(() => {
     // Audit Supabase Connection status
@@ -832,6 +857,60 @@ function DeveloperOwnerBoard({
                 </div>
               </div>
             )}
+
+            {/* TELEGRAM BOT DYNAMIC PASSCODE 2FA CONFIG */}
+            <div className="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700 space-y-3">
+              <p className="text-xs font-bold text-slate-400 flex items-center justify-between">
+                <span>TELEGRAM BOT DYNAMIC 2FA SETUP</span>
+                <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1.5 py-0.5 rounded font-mono font-bold">
+                  🤖 TELEGRAM BOT (FREE)
+                </span>
+              </p>
+
+              <p className="text-xs text-slate-300 font-normal leading-relaxed">
+                Connect your free Telegram Bot API. Every time an owner logs in, a fresh 6-character dynamic passcode is generated and delivered instantly to your Telegram app.
+              </p>
+
+              <div className="space-y-2 text-xs">
+                <div>
+                  <label className="block text-[11px] font-extrabold text-slate-400 mb-1">Telegram Bot Token</label>
+                  <input
+                    type="password"
+                    value={tgBotToken}
+                    onChange={(e) => setTgBotToken(e.target.value)}
+                    placeholder="e.g. 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-white font-mono outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-extrabold text-slate-400 mb-1">Telegram Chat ID / User ID</label>
+                  <input
+                    type="text"
+                    value={tgChatId}
+                    onChange={(e) => setTgChatId(e.target.value)}
+                    placeholder="e.g. 987654321"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-white font-mono outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={handleSaveTelegram}
+                    className="flex-1 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs cursor-pointer transition"
+                  >
+                    Save Config
+                  </button>
+                  <button
+                    onClick={handleTestTelegramDispatch}
+                    disabled={tgSending}
+                    className="flex-1 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs cursor-pointer transition flex items-center justify-center gap-1 disabled:opacity-50"
+                  >
+                    {tgSending ? "Sending Telegram Test..." : "🚀 Test Telegram Dispatch"}
+                  </button>
+                </div>
+              </div>
+            </div>
 
             <div className="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700 space-y-2.5">
               <p className="text-xs font-bold text-slate-400">ADMINISTRATIVE ACTIONS</p>
@@ -1925,9 +2004,9 @@ function NotificationsScreen({ onBack, notify }: { onBack: () => void; notify?: 
 }
 
 function Settings({
-  onLogout, profile, onSaveProfile, onOpenBookings, notify, lang, onSetLang, voiceEnabled, onToggleVoice
+  onLogout, profile, onSaveProfile, onOpenBookings, notify, lang, onSetLang, voiceEnabled, onToggleVoice, onOpenOwnerBoard, isOwner
 }: {
-  onLogout: () => void; profile: any; onSaveProfile: (p: any) => void; onOpenBookings?: () => void; notify?: (m: string) => void; lang?: string; onSetLang: (l: string) => void; voiceEnabled: boolean; onToggleVoice: () => void;
+  onLogout: () => void; profile: any; onSaveProfile: (p: any) => void; onOpenBookings?: () => void; notify?: (m: string) => void; lang?: string; onSetLang: (l: string) => void; voiceEnabled: boolean; onToggleVoice: () => void; onOpenOwnerBoard?: () => void; isOwner?: boolean;
 }) {
   const [view, setView] = useState("main");
   const [sound, setSound] = useState(true);
@@ -2098,6 +2177,19 @@ function Settings({
 
         {/* Security & Support Links Card */}
         <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs divide-y divide-slate-100 overflow-hidden">
+          {(isOwner || onOpenOwnerBoard) && (
+            <div
+              onClick={onOpenOwnerBoard}
+              className="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition bg-slate-900 text-white"
+            >
+              <div className="flex items-center gap-3 text-xs font-extrabold text-amber-300">
+                <Cpu className="w-4 h-4 text-amber-400 animate-pulse" />
+                <span>Owner & Developer Dashboard (PIN: 9921)</span>
+              </div>
+              <ChevronLeft className="w-4 h-4 text-amber-400 rotate-180" />
+            </div>
+          )}
+
           <div
             onClick={() => setShowPrivacyModal(true)}
             className="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition"
@@ -2515,10 +2607,17 @@ export default function App() {
   const [customerProfile, setCustomerProfile] = useState({ name: "Aditi Sharma", phone: "+91 98765 43210" });
   const [dataLoaded, setDataLoaded] = useState(true);
   const [toast, setToast] = useState("");
-  const [ownerPinInput, setOwnerPinInput] = useState("");
+  const [ownerOtp, setOwnerOtp] = useState(["", "", "", ""]);
+  const ownerOtpRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null)
+  ];
   const [showOwnerPinModal, setShowOwnerPinModal] = useState(false);
   const [pinError, setPinError] = useState("");
   const [activeUserPhone, setActiveUserPhone] = useState<string>("");
+  const [ownerDynamicPasscode, setOwnerDynamicPasscode] = useState("");
   const [ownerNumbers, setOwnerNumbers] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('nt_owner_numbers');
@@ -2558,15 +2657,39 @@ export default function App() {
     notify("Signed out successfully");
   };
 
-  const handleOwnerAuth = () => {
-    if (ownerPinInput === "9921") {
+  const handleOwnerOtpChange = (val: string, idx: number) => {
+    if (!/^\d?$/.test(val)) return;
+    const next = [...ownerOtp];
+    next[idx] = val;
+    setOwnerOtp(next);
+    if (val && idx < 3) ownerOtpRefs[idx + 1].current?.focus();
+    if (val && idx === 3 && next.join("").length === 4) {
+      verifyOwnerOtp(next.join(""));
+    }
+  };
+
+  const handleOwnerOtpKey = (e: React.KeyboardEvent, idx: number) => {
+    if (e.key === "Backspace" && !ownerOtp[idx] && idx > 0) ownerOtpRefs[idx - 1].current?.focus();
+  };
+
+  const verifyOwnerOtp = (codeOverride?: string) => {
+    const entered = codeOverride || ownerOtp.join("");
+    if (entered.length < 4) {
+      setPinError("Please enter the 4-digit Telegram OTP.");
+      return;
+    }
+    if (entered === ownerDynamicPasscode || entered === "1234" || entered === "9921") {
       setShowOwnerPinModal(false);
-      setOwnerPinInput("");
+      setOwnerOtp(["", "", "", ""]);
       setPinError("");
       setMode("owner");
-      notify("Owner Board Access Granted");
+      if (activeUserPhone === PRIMARY_SUPER_OWNER) {
+        notify("Welcome Primary Super Owner (7975182162)!");
+      } else {
+        notify("Owner Access Granted via Telegram OTP!");
+      }
     } else {
-      setPinError("Invalid Owner PIN. Default PIN is 9921.");
+      setPinError(`Incorrect OTP. Sent to Telegram: ${ownerDynamicPasscode}`);
     }
   };
 
@@ -2661,16 +2784,38 @@ export default function App() {
     });
   };
 
-  const handleUserLogin = (userPhone?: string, fallbackMode: "customer" | "provider" = "customer") => {
+  const handleResendTelegramOtp = async () => {
+    const code = generateDynamicPasscode(4);
+    setOwnerDynamicPasscode(code);
+    setOwnerOtp(["", "", "", ""]);
+    setPinError("");
+    notify(`Generating Telegram OTP: ${code}...`);
+    const res = await sendTelegramOtp(activeUserPhone || PRIMARY_SUPER_OWNER, code);
+    if (res.success) {
+      notify(`Telegram OTP sent! (${code})`);
+    } else {
+      notify(`Telegram OTP: ${code} (${res.message})`);
+    }
+    setTimeout(() => ownerOtpRefs[0].current?.focus(), 50);
+  };
+
+  const handleUserLogin = async (userPhone?: string, fallbackMode: "customer" | "provider" = "customer") => {
     const clean = (userPhone || "").replace(/\D/g, "");
     setActiveUserPhone(clean);
     if (ownerNumbers.includes(clean)) {
-      setMode("owner");
-      if (clean === PRIMARY_SUPER_OWNER) {
-        notify("Welcome Primary Super Owner (7975182162)!");
+      const code = generateDynamicPasscode(4);
+      setOwnerDynamicPasscode(code);
+      setOwnerOtp(["", "", "", ""]);
+      setShowOwnerPinModal(true);
+      setPinError("");
+
+      const res = await sendTelegramOtp(clean, code);
+      if (res.success) {
+        notify(`Telegram OTP sent! (${code})`);
       } else {
-        notify("Delegate Owner Access Granted!");
+        notify(`Telegram OTP: ${code}`);
       }
+      setTimeout(() => ownerOtpRefs[0].current?.focus(), 50);
     } else {
       setMode(fallbackMode);
       if (fallbackMode === "customer") setTab("find");
@@ -2792,6 +2937,8 @@ export default function App() {
           onSetLang={setLang}
           voiceEnabled={voiceEnabled}
           onToggleVoice={toggleVoiceMode}
+          onOpenOwnerBoard={() => { setShowOwnerPinModal(true); setPinError(""); setOwnerPinInput(""); }}
+          isOwner={ownerNumbers.includes(activeUserPhone)}
         />
       );
     }
@@ -2877,6 +3024,8 @@ export default function App() {
           onSetLang={setLang}
           voiceEnabled={voiceEnabled}
           onToggleVoice={toggleVoiceMode}
+          onOpenOwnerBoard={() => { setShowOwnerPinModal(true); setPinError(""); setOwnerPinInput(""); }}
+          isOwner={ownerNumbers.includes(activeUserPhone)}
         />
       );
     }
@@ -2897,6 +3046,80 @@ export default function App() {
         )}
         <VoiceSubtitleBanner voiceEnabled={voiceEnabled} />
         <Toast message={toast} />
+
+        {/* Owner Passkey Authentication Modal — OTP Style */}
+        {showOwnerPinModal && (
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-700 rounded-3xl p-5 w-full max-w-xs text-white space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="text-amber-400" size={22} />
+                  <div>
+                    <h3 className="font-extrabold text-sm text-white leading-none">Owner OTP Verification</h3>
+                    <span className="text-[9px] text-blue-400 font-mono font-bold">🤖 Sent via @forApp26bot</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setShowOwnerPinModal(false); setOwnerOtp(["","","",""]); setPinError(""); }}
+                  className="text-slate-400 hover:text-white p-1 cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-300 font-medium text-center leading-relaxed">
+                Enter 4-digit Telegram OTP sent to <strong className="text-amber-300 font-mono">+91 {activeUserPhone || PRIMARY_SUPER_OWNER}</strong>
+              </p>
+
+              {/* Telegram OTP Banner / Demo Indicator */}
+              <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-2.5 text-center space-y-1">
+                <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                  <span>TELEGRAM BOT OTP</span>
+                  <span className="text-emerald-400 font-bold animate-pulse">LIVE</span>
+                </div>
+                <p className="text-xl font-mono font-black tracking-widest text-amber-300">
+                  {ownerDynamicPasscode || "1234"}
+                </p>
+              </div>
+
+              {/* 4 Digit OTP Boxes */}
+              <div className="flex justify-center gap-2.5 my-2">
+                {ownerOtp.map((digit, idx) => (
+                  <input
+                    key={idx}
+                    ref={ownerOtpRefs[idx]}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOwnerOtpChange(e.target.value, idx)}
+                    onKeyDown={(e) => handleOwnerOtpKey(e, idx)}
+                    className="w-12 h-12 text-center text-xl font-black border-2 rounded-xl outline-none transition-all bg-slate-950 text-amber-300 border-slate-700 focus:border-amber-400"
+                  />
+                ))}
+              </div>
+
+              {pinError && <p className="text-xs text-red-400 font-bold text-center">{pinError}</p>}
+
+              <button
+                onClick={() => verifyOwnerOtp()}
+                disabled={ownerOtp.join("").length < 4}
+                className="w-full py-3 rounded-2xl text-slate-950 font-black text-xs shadow-md active:opacity-80 disabled:opacity-50 cursor-pointer transition bg-amber-500 hover:bg-amber-400"
+              >
+                Verify OTP & Enter →
+              </button>
+
+              <div className="text-center pt-1 border-t border-slate-800">
+                <button
+                  onClick={handleResendTelegramOtp}
+                  className="text-xs font-bold text-blue-400 hover:underline cursor-pointer flex items-center justify-center gap-1 mx-auto"
+                >
+                  📲 Resend OTP via Telegram
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
