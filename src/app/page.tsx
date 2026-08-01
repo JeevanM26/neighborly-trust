@@ -5,7 +5,7 @@ import {
   User, Star, ShieldCheck, Phone, MessageSquare, MapPin, Calendar,
   Menu, Globe, Volume2, Mic, LogOut, CheckCircle2, Clock, TrendingUp,
   Briefcase, Mail, Lock, CreditCard, Plus, Navigation, X, IndianRupee, Trash2,
-  AlertCircle, Database, Server, Cpu, ShieldAlert, Eye, RefreshCw, Key, VolumeX
+  AlertCircle, Database, Server, Cpu, ShieldAlert, Eye, RefreshCw, Key, VolumeX, Sparkles
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -35,11 +35,40 @@ const LANG_BCP47: Record<string, string> = {
   "ਪੰਜਾਬੀ": "pa-IN",
 };
 
+// Rich Visual Job Category Definitions with Visual Photo Badges
 const CATEGORIES = [
-  { name: "Electrician", icon: Zap },
-  { name: "Plumber", icon: Wrench },
-  { name: "Carpenter", icon: Hammer },
-  { name: "Home Clean", icon: HomeIcon },
+  {
+    name: "Electrician",
+    icon: Zap,
+    badgeBg: "linear-gradient(135deg, #FEF3C7, #FDE68A)",
+    badgeColor: "#B45309",
+    photoUrl: "⚡ Wiring & Panel",
+    label: "Electrical Work",
+  },
+  {
+    name: "Plumber",
+    icon: Wrench,
+    badgeBg: "linear-gradient(135deg, #E0F2FE, #BAE6FD)",
+    badgeColor: "#0369A1",
+    photoUrl: "💧 Pipes & Leaks",
+    label: "Plumbing Repairs",
+  },
+  {
+    name: "Carpenter",
+    icon: Hammer,
+    badgeBg: "linear-gradient(135deg, #FFEDD5, #FED7AA)",
+    badgeColor: "#C2410C",
+    photoUrl: "🪚 Wood & Furniture",
+    label: "Carpentry Work",
+  },
+  {
+    name: "Home Clean",
+    icon: HomeIcon,
+    badgeBg: "linear-gradient(135deg, #DCFCE7, #BBF7D0)",
+    badgeColor: "#15803D",
+    photoUrl: "🧹 Deep Cleaning",
+    label: "House Cleaning",
+  },
 ];
 
 // Fallback center used until the user's live location is available (or if they decline).
@@ -57,18 +86,41 @@ function sanitizeText(input: string): string {
     .replace(/\//g, "&#x2F;");
 }
 
-// Global Text-to-Speech Audio Guidance Engine
+// Global Text-to-Speech Engine with Voice Selection & Subtitle State
+let globalSpeakListener: ((text: string) => void) | null = null;
+
 function speakAudio(text: string, langName: string = "English") {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  if (typeof window === "undefined") return;
+
+  // Broadcast to visual subtitle banner
+  if (globalSpeakListener) {
+    globalSpeakListener(text);
+  }
+
+  if (!("speechSynthesis" in window)) return;
+
   try {
-    window.speechSynthesis.cancel(); // Stop current speech
+    const synth = window.speechSynthesis;
+    synth.cancel(); // Stop any pending audio
+    if (synth.paused) synth.resume();
+
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = LANG_BCP47[langName] || "en-IN";
-    utterance.rate = 0.95; // Slightly slower for low-literacy clarity
+    const targetLang = LANG_BCP47[langName] || "en-IN";
+    utterance.lang = targetLang;
+    utterance.rate = 0.9; // Slow rate for clear speech
     utterance.pitch = 1.0;
-    window.speechSynthesis.speak(utterance);
+    utterance.volume = 1.0;
+
+    // Pick best matching voice from system if available
+    const voices = synth.getVoices();
+    if (voices && voices.length > 0) {
+      const match = voices.find((v) => v.lang === targetLang || v.lang.startsWith(targetLang.split("-")[0]));
+      if (match) utterance.voice = match;
+    }
+
+    synth.speak(utterance);
   } catch (e) {
-    console.error("Audio Guidance Error:", e);
+    console.error("Audio Guidance Speech Error:", e);
   }
 }
 
@@ -76,6 +128,7 @@ function stopAudio() {
   if (typeof window !== "undefined" && "speechSynthesis" in window) {
     window.speechSynthesis.cancel();
   }
+  if (globalSpeakListener) globalSpeakListener("");
 }
 
 const INITIAL_WORKERS = [
@@ -83,6 +136,7 @@ const INITIAL_WORKERS = [
     id: 1, name: "Jim Caldwell", role: "Master Electrician", category: "Electrician", rating: 4.9, reviews: 124,
     lat: 13.9381, lng: 75.5745, available: "Available today", tags: ["Licensed", "Insured", "20+ Yrs Exp."],
     icon: Zap,
+    jobPhoto: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80",
     about: "Reliable electrical work for homes and farms. I specialize in residential wiring, panel upgrades, and barn lighting — from historic farmhouses to modern setups.",
     area: "Serving Madison County & Areas",
   },
@@ -90,6 +144,7 @@ const INITIAL_WORKERS = [
     id: 2, name: "Sarah Jenkins", role: "Plumbing Specialist", category: "Plumber", rating: 4.8, reviews: 89,
     lat: 13.9142, lng: 75.5812, available: "Emergency service", tags: ["Licensed", "Insured", "10+ Yrs Exp."],
     icon: Wrench,
+    jobPhoto: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?auto=format&fit=crop&w=400&q=80",
     about: "Fast, honest plumbing repairs — leaks, pipe fitting, borewell connections, and tank installs, done right the first time.",
     area: "Serving Green Valley & Areas",
   },
@@ -97,6 +152,7 @@ const INITIAL_WORKERS = [
     id: 3, name: "Robert Evans", role: "Master Carpenter", category: "Carpenter", rating: 5.0, reviews: 215,
     lat: 13.9335, lng: 75.5622, available: "Highly rated", tags: ["Licensed", "Insured", "25+ Yrs Exp."],
     icon: Hammer,
+    jobPhoto: "https://images.unsplash.com/photo-1538688525198-9b88f6f53126?auto=format&fit=crop&w=400&q=80",
     about: "Custom furniture, door and window fitting, and general woodwork repairs — built to last a generation.",
     area: "Serving Central Market & Areas",
   },
@@ -104,6 +160,7 @@ const INITIAL_WORKERS = [
     id: 4, name: "Meena Kulkarni", role: "Home Cleaning Expert", category: "Home Clean", rating: 4.7, reviews: 63,
     lat: 13.9218, lng: 75.5758, available: "Available today", tags: ["Verified", "Eco-Friendly", "5+ Yrs Exp."],
     icon: HomeIcon,
+    jobPhoto: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=400&q=80",
     about: "Deep cleaning, dusting, and sanitizing for homes and small offices. Bring my own eco-friendly supplies on request.",
     area: "Serving Green Valley & Areas",
   },
@@ -212,8 +269,8 @@ function LocationBanner({ status, placeName, retry }: { status: string; placeNam
 }
 
 const JOBS = [
-  { id: 1, title: "Lawn Mowing & Cleanup", price: "₹850", tag: "Premium", loc: "Green Valley, Sector 4 • 1.2 km away", icon: HomeIcon },
-  { id: 2, title: "Package Pickup", price: "₹150", tag: "Standard", loc: "Central Market Hub • 0.5 km away", icon: Briefcase },
+  { id: 1, title: "Lawn Mowing & Cleanup", price: "₹850", tag: "Premium", loc: "Green Valley, Sector 4 • 1.2 km away", icon: HomeIcon, jobPhoto: "https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=400&q=80" },
+  { id: 2, title: "Package Pickup", price: "₹150", tag: "Standard", loc: "Central Market Hub • 0.5 km away", icon: Briefcase, jobPhoto: "https://images.unsplash.com/photo-1580674684081-7617fbf3d745?auto=format&fit=crop&w=400&q=80" },
 ];
 
 /* ---------- small building blocks ---------- */
@@ -284,10 +341,24 @@ function Avatar({ size = 36, name = "User", onClick }: { size?: number; name?: s
   );
 }
 
-function ServiceImage({ icon: Icon, className, iconSize = 22 }: { icon: React.ElementType; className?: string; iconSize?: number }) {
+// Enhanced Service Image with Job Illustration Photo Banner
+function ServiceImage({ icon: Icon, className, iconSize = 22, jobCategory, jobPhoto }: { icon: React.ElementType; className?: string; iconSize?: number; jobCategory?: string; jobPhoto?: string }) {
+  const categoryInfo = CATEGORIES.find((c) => c.name === jobCategory);
+
   return (
-    <div className={`flex items-center justify-center ${className}`} style={{ background: SKY }}>
-      <Icon size={iconSize} color={NAVY} />
+    <div className={`relative overflow-hidden flex items-center justify-center ${className}`} style={{ background: categoryInfo?.badgeBg || SKY }}>
+      {jobPhoto ? (
+        <img src={jobPhoto} alt={jobCategory || "Job photo"} className="w-full h-full object-cover" />
+      ) : (
+        <div className="flex flex-col items-center justify-center gap-1 text-center p-1">
+          <Icon size={iconSize} color={categoryInfo?.badgeColor || NAVY} />
+          {categoryInfo && (
+            <span className="text-[9px] font-black uppercase tracking-tighter" style={{ color: categoryInfo.badgeColor }}>
+              {categoryInfo.name}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -298,6 +369,39 @@ function Toast({ message }: { message: string }) {
     <div className="absolute left-1/2 -translate-x-1/2 bottom-24 z-50 px-4 py-2.5 rounded-full text-white text-sm font-semibold shadow-lg flex items-center gap-2 animate-bounce" style={{ background: NAVY_DEEP, maxWidth: "90%" }}>
       <CheckCircle2 size={15} className="flex-shrink-0" />
       <span className="truncate">{message}</span>
+    </div>
+  );
+}
+
+// On-screen Voice Guidance Subtitle Banner
+function VoiceSubtitleBanner() {
+  const [subtitleText, setSubtitleText] = useState("");
+
+  useEffect(() => {
+    globalSpeakListener = (text: string) => {
+      setSubtitleText(text);
+    };
+    return () => {
+      globalSpeakListener = null;
+    };
+  }, []);
+
+  if (!subtitleText) return null;
+
+  return (
+    <div className="absolute left-3 right-3 bottom-20 z-40 bg-slate-900/95 backdrop-blur text-white p-3 rounded-2xl shadow-2xl border border-amber-500/40 flex items-start gap-2.5 animate-in slide-in-from-bottom duration-200">
+      <div className="p-1.5 rounded-full bg-amber-500 text-slate-950 flex-shrink-0 animate-pulse mt-0.5">
+        <Volume2 size={16} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Voice Guidance Active</span>
+          <button onClick={stopAudio} className="text-slate-400 hover:text-white p-0.5 cursor-pointer">
+            <X size={14} />
+          </button>
+        </div>
+        <p className="text-xs font-semibold leading-relaxed mt-0.5 text-slate-100">{subtitleText}</p>
+      </div>
     </div>
   );
 }
@@ -599,14 +703,16 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedOtp(code);
 
+    // Trigger speech immediately on user gesture to avoid browser audio blocking
+    speakAudio(`Your verification code is ${code}. Please enter ${code} to log in.`, lang);
+
     setTimeout(() => {
       setLoading(false);
       setStep("otp");
       setCountdown(30);
       notify(`Your OTP is ${code}`);
-      speakAudio(`Your verification code is ${code}. Please enter ${code} to log in.`, lang);
       setTimeout(() => otpRefs[0].current?.focus(), 100);
-    }, 800);
+    }, 600);
   };
 
   const handleOtpChange = (val: string, idx: number) => {
@@ -733,7 +839,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
             <h2 className="text-lg font-bold" style={{ color: NAVY_DEEP }}>Customer Login</h2>
             <button
               onClick={() => speakAudio("Customer Login screen. Please enter your full name and 10 digit mobile number. Then tap Send OTP to receive your verification code.", lang)}
-              className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold flex items-center gap-1.5 cursor-pointer hover:bg-blue-100 transition"
             >
               <Volume2 size={14} /> Voice Help
             </button>
@@ -849,14 +955,15 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedOtp(code);
 
+    speakAudio(`Your provider verification code is ${code}. Please enter ${code} to log in.`);
+
     setTimeout(() => {
       setLoading(false);
       setStep("otp");
       setCountdown(30);
       notify(`Your OTP is ${code}`);
-      speakAudio(`Your provider verification code is ${code}. Please enter ${code} to log in.`);
       setTimeout(() => otpRefs[0].current?.focus(), 100);
-    }, 800);
+    }, 600);
   };
 
   const handleOtpChange = (val: string, idx: number) => {
@@ -1056,7 +1163,7 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
           <h2 className="text-xl font-extrabold" style={{ color: NAVY_DEEP }}>Find Services</h2>
           <button
             onClick={speakScreenHelp}
-            className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold flex items-center gap-1 cursor-pointer"
+            className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold flex items-center gap-1 cursor-pointer hover:bg-blue-100 transition"
           >
             <Volume2 size={14} /> Read Page
           </button>
@@ -1074,14 +1181,16 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
         <LocationBanner status={status} placeName={placeName} retry={retry} />
 
         <div className="flex items-center justify-between mt-5 mb-2">
-          <h3 className="font-bold text-slate-800">Categories</h3>
+          <h3 className="font-bold text-slate-800">Categories (Service Types)</h3>
           {category && (
             <button onClick={() => setCategory(null)} className="text-sm font-semibold cursor-pointer" style={{ color: NAVY }}>
               Clear filter
             </button>
           )}
         </div>
-        <div className="grid grid-cols-4 gap-2.5">
+        
+        {/* Visual Category Photo Cards for Rural & Low Literacy UX */}
+        <div className="grid grid-cols-2 gap-2.5">
           {CATEGORIES.map((c) => {
             const isSel = category === c.name;
             return (
@@ -1093,11 +1202,16 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
                   if (notify) notify(msg);
                   speakAudio(msg, lang);
                 }}
-                className="flex flex-col items-center gap-1.5 rounded-xl py-3 border-2 transition cursor-pointer active:scale-95"
-                style={isSel ? { background: NAVY, borderColor: NAVY } : { background: SKY, borderColor: "transparent" }}
+                className="flex items-center gap-2.5 p-2.5 rounded-2xl border-2 transition cursor-pointer text-left active:scale-[0.98]"
+                style={isSel ? { background: NAVY, borderColor: NAVY, color: "white" } : { background: SKY, borderColor: "#E2E8F0", color: "#1E293B" }}
               >
-                <c.icon size={20} color={isSel ? "white" : NAVY} />
-                <span className="text-[11px] font-semibold text-center leading-tight" style={{ color: isSel ? "white" : "#334155" }}>{c.name}</span>
+                <div className="w-12 h-12 rounded-xl flex flex-col items-center justify-center flex-shrink-0 shadow-xs" style={{ background: c.badgeBg }}>
+                  <c.icon size={22} color={c.badgeColor} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`font-extrabold text-xs truncate ${isSel ? "text-white" : "text-slate-900"}`}>{c.name}</p>
+                  <p className={`text-[10px] font-semibold truncate ${isSel ? "text-blue-100" : "text-slate-500"}`}>{c.photoUrl}</p>
+                </div>
               </button>
             );
           })}
@@ -1121,7 +1235,7 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
         </div>
 
         <div className="flex items-center justify-between mt-5 mb-2">
-          <h3 className="font-bold text-slate-800">{category ? `${category}s Nearby` : "Nearest to You"}</h3>
+          <h3 className="font-bold text-slate-800">{category ? `${category}s Nearby` : "Nearest Service Specialists"}</h3>
           <span className="text-xs text-slate-400">{filtered.length} found</span>
         </div>
         {filtered.length === 0 ? (
@@ -1132,25 +1246,29 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
         ) : (
         <div className="space-y-3">
           {filtered.map((w) => (
-            <div key={w.id} className="w-full flex items-center gap-3 rounded-xl border border-slate-100 shadow-sm p-2.5 text-left transition hover:border-blue-200">
+            <div key={w.id} className="w-full flex items-center gap-3 rounded-2xl border border-slate-200 shadow-sm p-3 text-left transition hover:border-blue-300 bg-white">
               <button onClick={() => onOpenWorker(w)} className="flex gap-3 text-left flex-1 min-w-0 cursor-pointer">
-                <ServiceImage icon={w.icon} className="w-16 h-16 rounded-lg flex-shrink-0" iconSize={26} />
+                {/* Visual Job Photo Banner */}
+                <ServiceImage icon={w.icon} className="w-16 h-16 rounded-xl flex-shrink-0 shadow-sm" iconSize={26} jobCategory={w.category} jobPhoto={w.jobPhoto} />
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-slate-800 text-sm truncate">{w.name}</p>
-                  <span className="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full mt-0.5" style={{ background: SKY, color: NAVY }}>
-                    {w.role}
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-slate-900 text-sm truncate">{w.name}</p>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md border" style={{ background: SKY, color: NAVY, borderColor: "#CBD5E1" }}>
+                      {w.category}
+                    </span>
+                  </div>
+                  <p className="text-xs font-semibold text-blue-900 mt-0.5 truncate">{w.role}</p>
                   <div className="flex items-center justify-between mt-1">
                     <Stars rating={w.rating} />
-                    <span className="text-xs font-semibold flex items-center gap-1" style={{ color: NAVY }}>
-                      <MapPin size={11} /> {w.distance}
+                    <span className="text-xs font-semibold flex items-center gap-1 text-slate-600">
+                      <MapPin size={11} className="text-emerald-600" /> {w.distance}
                     </span>
                   </div>
                 </div>
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); speakAudio(`${w.name}, ${w.role}, rated ${w.rating} stars, located ${w.distance}. ${w.about}`, lang); }}
-                className="p-2 rounded-lg bg-blue-50 text-blue-900 hover:bg-blue-100 cursor-pointer flex-shrink-0"
+                className="p-2.5 rounded-xl bg-blue-50 text-blue-900 hover:bg-blue-100 cursor-pointer flex-shrink-0 border border-blue-200"
                 title="Listen to worker bio"
               >
                 <Volume2 size={18} />
@@ -1230,9 +1348,9 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify, lang }: { 
 
           <div className="space-y-3">
             {visibleWorkers.map((w) => (
-              <div key={w.id} className="rounded-xl border border-slate-100 shadow-sm p-3">
+              <div key={w.id} className="rounded-2xl border border-slate-200 shadow-sm p-3 bg-white">
                 <button onClick={() => onOpenWorker(w)} className="flex gap-3 text-left w-full cursor-pointer">
-                  <ServiceImage icon={w.icon} className="w-14 h-14 rounded-full" iconSize={22} />
+                  <ServiceImage icon={w.icon} className="w-14 h-14 rounded-xl" iconSize={22} jobCategory={w.category} jobPhoto={w.jobPhoto} />
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-slate-800 text-sm">{w.name}</p>
                     <p className="text-xs font-semibold" style={{ color: NAVY }}>{w.role}</p>
@@ -1265,13 +1383,13 @@ function WorkerProfile({ worker, onBack, onBook, profileImg, notify, lang }: { w
       <TopBar title="Neighborly Trust" onBack={onBack} right={<Avatar size={32} name={profileImg} />} audioText={profileAudioText} lang={lang} />
       <div className="px-4 pb-6">
         <div className="relative mt-3">
-          <ServiceImage icon={worker.icon} className="w-full h-52 rounded-xl" iconSize={56} />
-          <span className="absolute bottom-2 left-2 bg-blue-900/90 text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+          <ServiceImage icon={worker.icon} className="w-full h-52 rounded-2xl shadow-md" iconSize={56} jobCategory={worker.category} jobPhoto={worker.jobPhoto} />
+          <span className="absolute bottom-2 left-2 bg-blue-900/90 text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 backdrop-blur">
             <ShieldCheck size={13} /> Verified Pro
           </span>
           <button
             onClick={() => speakAudio(profileAudioText, lang)}
-            className="absolute bottom-2 right-2 bg-amber-500 text-slate-950 font-bold text-xs px-3 py-1.5 rounded-full shadow flex items-center gap-1 cursor-pointer"
+            className="absolute bottom-2 right-2 bg-amber-500 text-slate-950 font-bold text-xs px-3 py-1.5 rounded-full shadow flex items-center gap-1 cursor-pointer hover:bg-amber-400 transition"
           >
             <Volume2 size={15} /> Read Bio
           </button>
@@ -1348,14 +1466,14 @@ function BookingConfirm({ worker, onDone, lang }: { worker: any; onDone: () => v
 
       <button
         onClick={() => speakAudio(`Booking confirmed with ${worker.name}, ${worker.role}.`, lang)}
-        className="my-3 px-3 py-1.5 rounded-full bg-white text-blue-900 font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+        className="my-3 px-3 py-1.5 rounded-full bg-white text-blue-900 font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer hover:bg-blue-50 transition"
       >
         <Volume2 size={15} /> Read Confirmation
       </button>
 
       <div className="bg-white rounded-xl p-4 mt-2 w-full max-w-xs text-left shadow-sm">
         <div className="flex items-center gap-3">
-          <ServiceImage icon={worker.icon} className="w-11 h-11 rounded-full" iconSize={18} />
+          <ServiceImage icon={worker.icon} className="w-11 h-11 rounded-full" iconSize={18} jobCategory={worker.category} jobPhoto={worker.jobPhoto} />
           <div>
             <p className="font-bold text-sm text-slate-800">{worker.name}</p>
             <p className="text-xs text-slate-500">{worker.role}</p>
@@ -1421,7 +1539,7 @@ function MyBookings({ bookings, onMarkComplete, onRate, lang }: { bookings: any[
           [...bookings].reverse().map((b) => (
             <div key={b.id} className="rounded-xl border border-slate-100 shadow-sm p-3 mb-3">
               <div className="flex gap-3 items-center">
-                <ServiceImage icon={b.worker.icon} className="w-14 h-14 rounded-lg" iconSize={22} />
+                <ServiceImage icon={b.worker.icon} className="w-14 h-14 rounded-lg" iconSize={22} jobCategory={b.worker.category} jobPhoto={b.worker.jobPhoto} />
                 <div className="flex-1">
                   <p className="font-bold text-sm text-slate-800">{b.worker.name}</p>
                   <p className="text-xs text-slate-500">{b.worker.role}</p>
@@ -1877,7 +1995,7 @@ function ProviderDashboard({ onOpenSettings, profileImg, online, setOnline, list
         <div className="flex gap-3 overflow-x-auto pb-1">
           {jobs.map((j) => (
             <div key={j.id} className="bg-white rounded-xl shadow-sm p-2.5 w-52 flex-shrink-0">
-              <ServiceImage icon={j.icon} className="w-full h-20 rounded-lg" iconSize={26} />
+              <ServiceImage icon={j.icon} className="w-full h-24 rounded-lg" iconSize={26} jobPhoto={j.jobPhoto} />
               <p className="font-bold text-sm mt-2 text-slate-800">{j.title}</p>
               <p className="text-xs text-slate-500">{j.price} • {j.tag}</p>
               <p className="text-[10px] text-slate-400">{j.loc}</p>
@@ -2007,6 +2125,7 @@ export default function App() {
       available: "Verified Pro (Live)",
       tags: ["Certified", "Rural Specialist"],
       icon: Zap,
+      jobPhoto: "https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=400&q=80",
       about: "Specialized in rural solar panel installations, pump starter wiring, and agricultural automation.",
       area: "Shivamogga & Rural Belt"
     };
@@ -2180,6 +2299,7 @@ export default function App() {
         {showProviderNav && (
           <BottomNav tabs={providerTabs} active={providerTab} onChange={setProviderTab} />
         )}
+        <VoiceSubtitleBanner />
         <Toast message={toast} />
 
         {/* OWNER SECURITY PIN MODAL */}
