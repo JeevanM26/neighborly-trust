@@ -20,7 +20,7 @@ const NAVY_DEEP = "#072A4A";
 const SKY = "#EAF2FB";
 const GOLD = "#F5A623";
 
-const LANGS = ["English", "हिन्दी", "বাংলা", "తెలుగు", "ਮਰਾਠੀ", "தமிழ்", "ગુજરાતી", "ਕನ್ನಡ", "മലയാളം", "ਪੰਜਾਬੀ"];
+const LANGS = ["English", "हिन्दी", "বাংলা", "తెలుగు", "ਮਰਾਠੀ", "தமிழ்", "ગુજરાતી", "<ctrl42>ಕನ್ನಡ", "മലയാളം", "ਪੰਜਾਬੀ"];
 
 const LANG_BCP47: Record<string, string> = {
   "English": "en-IN",
@@ -30,9 +30,69 @@ const LANG_BCP47: Record<string, string> = {
   "ਮਰਾਠੀ": "mr-IN",
   "தமிழ்": "ta-IN",
   "ગુજરાતી": "gu-IN",
-  "ਕನ್ನಡ": "kn-IN",
+  "<ctrl42>ಕನ್ನಡ": "kn-IN",
   "മലയാളം": "ml-IN",
   "ਪੰਜਾਬੀ": "pa-IN",
+};
+
+// Native Job Voice Translation Dictionary for Rural Audio Accessibility
+const NATIVE_JOB_VOICE: Record<string, Record<string, string>> = {
+  "ಕನ್ನಡ": {
+    "Electrician": "ಎಲೆಕ್ಟ್ರಿಷಿಯನ್. ವಿದ್ಯುತ್ ಮತ್ತು ವೈರಿಂಗ್ ಕೆಲಸ ಮಾಡುತ್ತಾರೆ.",
+    "Plumber": "ಪ್ಲಂಬರ್. ನಳ, ಬೋರ್ವೆಲ್ ಮತ್ತು ಪೈಪ್ ರಿಪೇರಿ ಕೆಲಸ ಮಾಡುತ್ತಾರೆ.",
+    "Carpenter": "ಕಾರ್ಪೆಂಟರ್. ಮರದ ಪೀಠೋಪಕರಣ, ಬಾಗಿಲು ಮತ್ತು ಕಿಟಕಿ ಕೆಲಸ ಮಾಡುತ್ತಾರೆ.",
+    "Home Clean": "ಮನೆ ಸ್ವಚ್ಛಗೊಳಿಸುವ ಕ್ಲೀನಿಂಗ್ ಕೆಲಸ ಮಾಡುತ್ತೇನೆ.",
+    "Call": "ಕರೆ ಮಾಡಿ",
+    "Book": "ಬುಕ್ ಮಾಡಿ",
+  },
+  "हिन्दी": {
+    "Electrician": "इलेक्ट्रिशियन। बिजली और वायरिंग का काम करते हैं।",
+    "Plumber": "प्लंबर। नल, बोरवेल और पाइप मरम्मत का काम करते हैं।",
+    "Carpenter": "कारपेंटर। लकड़ी, दरवाजे और फर्नीचर का काम करते हैं।",
+    "Home Clean": "होम क्लीनर। घर की सफाई का काम करते हैं।",
+    "Call": "कॉल करें",
+    "Book": "बुक करें",
+  },
+  "తెలుగు": {
+    "Electrician": "ఎలక్ట్రీషియన్. కరెంట్ మరియు వైరింగ్ పని చేస్తారు.",
+    "Plumber": "ప్లాంబర్. పైపు మరియు నల్లా రిపేరు పని చేస్తారు.",
+    "Carpenter": "కార్పెంటర్. చెక్క మరియు ఫర్నిచర్ పని చేస్తారు.",
+    "Home Clean": "క్లీనర్. ఇల్లు శుభ్రం చేసే పని చేస్తారు.",
+    "Call": "కాల్ చేయండి",
+    "Book": "బుక్ చేయండి",
+  },
+  "தமிழ்": {
+    "Electrician": "எலக்ட்ரீஷியன். மின்சார மற்றும் வயரிங் வேலை செய்பவர்.",
+    "Plumber": "பிளம்பர். குழாய் மற்றும் பைப் பழுதுபார்க்கும் வேலை.",
+    "Carpenter": "கார்பெண்டர். மர வேலை மற்றும் ஃபர்னிச்சர் வேலை.",
+    "Home Clean": "கிளீனர். வீடு சுத்தம் செய்யும் வேலை.",
+    "Call": "அழைக்கவும்",
+    "Book": "புக் செய்யவும்",
+  },
+  "मराठी": {
+    "Electrician": "इलेक्ट्रिशियन. विजेचे आणि वायरिंगचे काम करतात.",
+    "Plumber": "प्लंबर. नळ आणि पाईप दुरुस्तीचे काम करतात.",
+    "Carpenter": "सुतार. लाकडी आणि फर्निचरचे काम करतात.",
+    "Home Clean": "क्लीनर. घर स्वच्छतेचे काम करतात.",
+    "Call": "कॉल करा",
+    "Book": "बुक करा",
+  },
+  "বাংলা": {
+    "Electrician": "ইলেক্ট্রিশিয়ান। বিজলী এবং ওয়ারিংয়ের কাজ করেন।",
+    "Plumber": "প্লাম্বার। পাইপ ও কলের কাজ করেন।",
+    "Carpenter": "কাঠমিস্ত্রি। কাঠের ও ফার্নিচারের কাজ করেন।",
+    "Home Clean": "ক্লিনার। ঘর পরিষ্কারের কাজ করেন।",
+    "Call": "কল করুন",
+    "Book": "বুক করুন",
+  },
+  "English": {
+    "Electrician": "Electrician. Handles electrical wiring, switches, and farm motor repairs.",
+    "Plumber": "Plumber. Handles pipe leaks, borewells, and water tank repairs.",
+    "Carpenter": "Carpenter. Handles furniture repairs, doors, and woodwork.",
+    "Home Clean": "Home Cleaner. Handles deep house cleaning and sanitizing.",
+    "Call": "Call now",
+    "Book": "Book now",
+  }
 };
 
 // Rich Visual Job Category Definitions with Visual Photo Badges
@@ -105,7 +165,8 @@ function speakAudio(text: string, langName: string = "English") {
     if (synth.paused) synth.resume();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    const targetLang = LANG_BCP47[langName] || "en-IN";
+    const cleanLang = langName.replace(/[^\u0C80-\u0CFF\w]/g, "").trim();
+    const targetLang = LANG_BCP47[langName] || LANG_BCP47[cleanLang] || "en-IN";
     utterance.lang = targetLang;
     utterance.rate = 0.9; // Slow rate for clear speech
     utterance.pitch = 1.0;
@@ -129,6 +190,15 @@ function stopAudio() {
     window.speechSynthesis.cancel();
   }
   if (globalSpeakListener) globalSpeakListener("");
+}
+
+// Speak Short, Simple Native Job Description for Rural Users
+function speakWorkerJob(worker: any, langName: string = "English") {
+  const langKey = NATIVE_JOB_VOICE[langName] ? langName : "English";
+  const dict = NATIVE_JOB_VOICE[langKey] || NATIVE_JOB_VOICE["English"];
+  const jobSpeech = dict[worker.category] || `${worker.role}.`;
+  const text = `${worker.name}. ${jobSpeech}`;
+  speakAudio(text, langName);
 }
 
 const INITIAL_WORKERS = [
@@ -1146,7 +1216,9 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
   });
 
   const speakScreenHelp = () => {
-    const summary = `Find Services screen. ${filtered.length} verified technicians available nearby. Categories are Electrician, Plumber, Carpenter, and Home Cleaner. Tap any worker card to view details or book.`;
+    const summary = lang === "<ctrl42>ಕನ್ನಡ"
+      ? `ಸೇವಾ ಪಟ್ಟಿ. ${filtered.length} ತಜ್ಞರು ಹತ್ತಿರದಲ್ಲಿ ಲಭ್ಯವಿದ್ದಾರೆ. ಎಲೆಕ್ಟ್ರಿಷಿಯನ್, ಪ್ಲಂಬರ್, ಕಾರ್ಪೆಂಟರ್, ಕ್ಲೀನರ್.`
+      : `Find Services screen. ${filtered.length} verified technicians available nearby.`;
     speakAudio(summary, lang);
   };
 
@@ -1155,7 +1227,7 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
       <TopBar
         title="Neighborly Trust"
         right={<Avatar size={34} name={profileImg} onClick={onOpenProfile} />}
-        audioText={`Find Services screen. ${filtered.length} verified technicians available nearby. Categories are Electrician, Plumber, Carpenter, and Home Cleaner.`}
+        audioText={lang === "<ctrl42>ಕನ್ನಡ" ? `ಸೇವಾ ಪಟ್ಟಿ. ${filtered.length} ತಜ್ಞರು ಲಭ್ಯವಿದ್ದಾರೆ.` : `Find Services screen. ${filtered.length} verified technicians available nearby.`}
         lang={lang}
       />
       <div className="flex-1 overflow-y-auto px-4 pb-4">
@@ -1165,7 +1237,7 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
             onClick={speakScreenHelp}
             className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold flex items-center gap-1 cursor-pointer hover:bg-blue-100 transition"
           >
-            <Volume2 size={14} /> Read Page
+            <Volume2 size={14} /> Voice Help
           </button>
         </div>
 
@@ -1200,7 +1272,8 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
                   setCategory(isSel ? null : c.name);
                   const msg = isSel ? "Showing all categories" : `Filtered by ${c.name}`;
                   if (notify) notify(msg);
-                  speakAudio(msg, lang);
+                  const dict = NATIVE_JOB_VOICE[lang || "English"] || NATIVE_JOB_VOICE["English"];
+                  speakAudio(dict[c.name] || `${c.name} category selected.`, lang);
                 }}
                 className="flex items-center gap-2.5 p-2.5 rounded-2xl border-2 transition cursor-pointer text-left active:scale-[0.98]"
                 style={isSel ? { background: NAVY, borderColor: NAVY, color: "white" } : { background: SKY, borderColor: "#E2E8F0", color: "#1E293B" }}
@@ -1267,9 +1340,9 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
                 </div>
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); speakAudio(`${w.name}, ${w.role}, rated ${w.rating} stars, located ${w.distance}. ${w.about}`, lang); }}
+                onClick={(e) => { e.stopPropagation(); speakWorkerJob(w, lang); }}
                 className="p-2.5 rounded-xl bg-blue-50 text-blue-900 hover:bg-blue-100 cursor-pointer flex-shrink-0 border border-blue-200"
-                title="Listen to worker bio"
+                title="Listen to worker job"
               >
                 <Volume2 size={18} />
               </button>
@@ -1376,11 +1449,9 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify, lang }: { 
 }
 
 function WorkerProfile({ worker, onBack, onBook, profileImg, notify, lang }: { worker: any; onBack: () => void; onBook: () => void; profileImg: string; notify: (m: string) => void; lang?: string }) {
-  const profileAudioText = `${worker.name}, ${worker.role}. Rating ${worker.rating} stars. ${worker.about}. Service area: ${worker.area}.`;
-  
   return (
     <div className="h-full flex flex-col bg-white overflow-y-auto" style={{ background: "#FDFBF8" }}>
-      <TopBar title="Neighborly Trust" onBack={onBack} right={<Avatar size={32} name={profileImg} />} audioText={profileAudioText} lang={lang} />
+      <TopBar title="Neighborly Trust" onBack={onBack} right={<Avatar size={32} name={profileImg} />} audioText={`${worker.name}, ${worker.role}.`} lang={lang} />
       <div className="px-4 pb-6">
         <div className="relative mt-3">
           <ServiceImage icon={worker.icon} className="w-full h-52 rounded-2xl shadow-md" iconSize={56} jobCategory={worker.category} jobPhoto={worker.jobPhoto} />
@@ -1388,10 +1459,10 @@ function WorkerProfile({ worker, onBack, onBook, profileImg, notify, lang }: { w
             <ShieldCheck size={13} /> Verified Pro
           </span>
           <button
-            onClick={() => speakAudio(profileAudioText, lang)}
+            onClick={() => speakWorkerJob(worker, lang)}
             className="absolute bottom-2 right-2 bg-amber-500 text-slate-950 font-bold text-xs px-3 py-1.5 rounded-full shadow flex items-center gap-1 cursor-pointer hover:bg-amber-400 transition"
           >
-            <Volume2 size={15} /> Read Bio
+            <Volume2 size={15} /> Voice Job Bio
           </button>
         </div>
 
@@ -1551,7 +1622,7 @@ function MyBookings({ bookings, onMarkComplete, onRate, lang }: { bookings: any[
                   </span>
                 </div>
                 <button
-                  onClick={() => speakAudio(`Booking with ${b.worker.name}, ${b.worker.role}. Status: ${b.status}`, lang)}
+                  onClick={() => speakWorkerJob(b.worker, lang)}
                   className="p-1.5 rounded-lg bg-blue-50 text-blue-900 cursor-pointer"
                 >
                   <Volume2 size={16} />
@@ -2041,7 +2112,7 @@ function ProviderDashboard({ onOpenSettings, profileImg, online, setOnline, list
 
 export default function App() {
   const [mode, setMode] = useState("login"); // login | customer | provider | owner
-  const [lang, setLang] = useState("English");
+  const [lang, setLang] = useState("<ctrl42>ಕನ್ನಡ");
   const [tab, setTab] = useState("find");
   const [worker, setWorker] = useState<any>(null);
   const [justBooked, setJustBooked] = useState<any>(null);
