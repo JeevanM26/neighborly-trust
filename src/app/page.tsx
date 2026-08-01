@@ -12,7 +12,6 @@ import { supabase } from "@/lib/supabase";
 /* ---------------------------------------------------------
    NEIGHBORLY TRUST — High Precision & Multi-lingual Engine
    Palette: Deep Navy #0B3D66 / Ultra Deep #041B30 / Sky Crisp #EBF3FC
-   Typography & UI: Clean Multi-lingual Sync (Kannada, Hindi, Telugu, Tamil, Marathi...)
 --------------------------------------------------------- */
 
 const NAVY = "#0B3D66";
@@ -40,7 +39,7 @@ function getLoginHelp(lang: string) {
   switch (lang) {
     case "ಕನ್ನಡ": return "ಹೆಸರು ಮತ್ತು ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಹಾಕಿ. ಓಟಿಪಿ ಒತ್ತಿ.";
     case "हिंदी": return "नाम और मोबाइल नंबर डालें। ओटीपी दबाएं।";
-    case "తెలుగు": return "పేరు మరియు మొబైల్ నంబర్ వేయండి. ఓటీపీ నొక్కండి.";
+    case "తెలుగు": return "పేరు మరియు మొಬೈಲ್ ನಂಬರ್ వేయండి. ఓటీపీ నొక్కండి.";
     case "தமிழ்": return "பெயர் மற்றும் மொபைல் எண் உள்ளிடவும். OTP அழுத்தவும்.";
     case "मराठी": return "नाव आणि मोबाईल नंबर टाका. ओटीपी दाबा.";
     case "বাংলা": return "নাম এবং মোবাইল নম্বর দিন। ওটিপি চাপুন।";
@@ -83,7 +82,7 @@ const NATIVE_JOB_VOICE: Record<string, Record<string, string>> = {
     "Electrician": "ఎలక్ట్రీషియన్. కరెంట్ పని.",
     "Plumber": "ప్లాంబర్. పైపు పని.",
     "Carpenter": "కార్పెంటర్. చెక్క పని.",
-    "Home Clean": "క్లీనర్. ఇల్లు శుభ్రం.",
+    "Home Clean": "ಕ್ಲೀನರ್. ఇల్లు శుభ్రం.",
   },
   "தமிழ்": {
     "Electrician": "எலக்ட்ரீஷியன். மின்சார வேலை.",
@@ -228,6 +227,14 @@ function stopAudio() {
     window.speechSynthesis.cancel();
   }
   if (globalSpeakListener) globalSpeakListener("");
+}
+
+// Speak Category Name when category button is pressed
+function speakCategoryName(catName: string, langName: string = "English") {
+  const langKey = NATIVE_JOB_VOICE[langName] ? langName : "English";
+  const dict = NATIVE_JOB_VOICE[langKey] || NATIVE_JOB_VOICE["English"];
+  const phrase = dict[catName] || `${catName}.`;
+  speakAudio(phrase, langName);
 }
 
 // Speak Ultra-Simple Worker Job Description (Sharp & Fast)
@@ -383,17 +390,26 @@ const JOBS = [
 
 /* ---------- small building blocks ---------- */
 
-function TopBar({ title, onBack, right, audioText, lang }: { title: string; onBack?: () => void; right?: React.ReactNode; audioText?: string; lang?: string }) {
+function TopBar({
+  title, onBack, right, audioText, lang, voiceEnabled, onToggleVoice
+}: {
+  title: string; onBack?: () => void; right?: React.ReactNode; audioText?: string; lang?: string; voiceEnabled?: boolean; onToggleVoice?: () => void;
+}) {
   const [speaking, setSpeaking] = useState(false);
-  const toggleAudio = () => {
-    if (speaking) {
-      stopAudio();
-      setSpeaking(false);
-    } else if (audioText) {
+
+  const handleSpeakerClick = () => {
+    if (onToggleVoice) {
+      onToggleVoice();
+    }
+    if (!voiceEnabled && audioText) {
       speakAudio(audioText, lang || "English");
       setSpeaking(true);
+    } else if (speaking) {
+      stopAudio();
+      setSpeaking(false);
     }
   };
+
   return (
     <div className="flex items-center justify-between px-4 py-3.5 bg-white border-b-2 border-slate-200 sticky top-0 z-10 shadow-xs">
       <div className="flex items-center gap-2">
@@ -405,17 +421,18 @@ function TopBar({ title, onBack, right, audioText, lang }: { title: string; onBa
         <span className="font-black text-lg tracking-tight" style={{ color: NAVY }}>{title}</span>
       </div>
       <div className="flex items-center gap-2">
-        {audioText && (
-          <button
-            onClick={toggleAudio}
-            className={`p-1.5 rounded-full flex items-center gap-1 text-xs font-black transition cursor-pointer ${
-              speaking ? "bg-amber-500 text-slate-950 animate-pulse ring-2 ring-amber-400" : "bg-amber-400 text-slate-950 border border-amber-500 shadow-xs"
-            }`}
-            title="Listen to Voice Guidance"
-          >
-            {speaking ? <VolumeX size={16} /> : <Volume2 size={16} />}
-          </button>
-        )}
+        {/* Main Master Speaker Toggle Button */}
+        <button
+          onClick={handleSpeakerClick}
+          className={`p-2 rounded-full flex items-center justify-center transition cursor-pointer active:scale-95 shadow-xs border-2 ${
+            voiceEnabled
+              ? "bg-amber-400 text-slate-950 border-amber-500 ring-2 ring-amber-400"
+              : "bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200"
+          }`}
+          title={voiceEnabled ? "Voice Mode Active (Tap to Hide Voice Options)" : "Tap to Show Voice Guidance Options"}
+        >
+          {voiceEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+        </button>
         {right}
       </div>
     </div>
@@ -481,8 +498,8 @@ function Toast({ message }: { message: string }) {
   );
 }
 
-// On-screen Voice Guidance Subtitle Banner
-function VoiceSubtitleBanner() {
+// On-screen Voice Guidance Subtitle Banner (Only visible when Voice Mode is ON)
+function VoiceSubtitleBanner({ voiceEnabled }: { voiceEnabled: boolean }) {
   const [subtitleText, setSubtitleText] = useState("");
 
   useEffect(() => {
@@ -494,7 +511,7 @@ function VoiceSubtitleBanner() {
     };
   }, []);
 
-  if (!subtitleText) return null;
+  if (!voiceEnabled || !subtitleText) return null;
 
   return (
     <div className="absolute left-3 right-3 bottom-20 z-40 bg-slate-950 text-white p-3 rounded-2xl shadow-2xl border-2 border-amber-400 flex items-start gap-2.5 animate-in slide-in-from-bottom duration-150">
@@ -503,7 +520,7 @@ function VoiceSubtitleBanner() {
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Voice Guidance (0ms)</span>
+          <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Voice Guidance</span>
           <button onClick={stopAudio} className="text-slate-400 hover:text-white p-0.5 cursor-pointer">
             <X size={14} />
           </button>
@@ -545,7 +562,7 @@ function BottomNav({ tabs, active, onChange }: { tabs: { key: string; label: str
   );
 }
 
-function LangChips({ selected, onSelect, dark }: { selected: string; onSelect: (l: string) => void; dark?: boolean }) {
+function LangChips({ selected, onSelect, dark, voiceEnabled }: { selected: string; onSelect: (l: string) => void; dark?: boolean; voiceEnabled?: boolean }) {
   return (
     <div className="mt-6">
       <div className={`flex items-center gap-1.5 text-xs font-bold mb-2 ${dark ? "text-white/90" : "text-slate-700"}`}>
@@ -567,7 +584,7 @@ function LangChips({ selected, onSelect, dark }: { selected: string; onSelect: (
                   : { background: "white", color: NAVY, borderColor: "#94A3B8" }
               }
             >
-              <Volume2 size={13} className={isSel ? "text-amber-400" : "text-slate-500"} />
+              {voiceEnabled && <Volume2 size={13} className={isSel ? "text-amber-400" : "text-slate-500"} />}
               {l}
             </button>
           );
@@ -771,8 +788,8 @@ function DeveloperOwnerBoard({
 /* ---------- screens ---------- */
 
 // ─── PHONE OTP LOGIN — Customer ───────────────────────────────────────────────
-function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner }: {
-  onLogin: () => void; goProvider: () => void; lang: string; setLang: (l: string) => void; notify: (m: string) => void; onOpenOwner: () => void;
+function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner, voiceEnabled, onToggleVoice }: {
+  onLogin: () => void; goProvider: () => void; lang: string; setLang: (l: string) => void; notify: (m: string) => void; onOpenOwner: () => void; voiceEnabled: boolean; onToggleVoice: () => void;
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -811,8 +828,9 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedOtp(code);
 
-    // Speak ultra-simple OTP code synchronously in selected language
-    speakAudio(getOtpHelp(code, lang), lang);
+    if (voiceEnabled) {
+      speakAudio(getOtpHelp(code, lang), lang);
+    }
 
     setTimeout(() => {
       setLoading(false);
@@ -838,7 +856,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
     if (code.length < 4) { setError("Please enter the 4-digit OTP."); return; }
     if (code !== generatedOtp && code !== "1234") { setError(`Incorrect OTP. Try ${generatedOtp}.`); return; }
     setError(""); setLoading(true);
-    speakAudio(lang === "ಕನ್ನಡ" ? "ಲಾಗಿನ್." : "Login successful.", lang);
+    if (voiceEnabled) speakAudio(lang === "ಕನ್ನಡ" ? "ಲಾಗಿನ್." : "Login successful.", lang);
     setTimeout(() => { setLoading(false); onLogin(); }, 400);
   };
 
@@ -871,13 +889,15 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
             <h2 className="text-lg font-black text-center mb-1" style={{ color: NAVY_DEEP }}>Enter OTP</h2>
             <p className="text-center text-xs font-semibold text-slate-500 mb-1">Sent to +91 {phone}</p>
 
-            {/* Audio Guidance Bar */}
-            <button
-              onClick={() => speakAudio(getOtpHelp(generatedOtp, lang), lang)}
-              className="w-full py-2.5 my-2 rounded-2xl bg-amber-400 border-2 border-amber-500 text-slate-950 text-xs font-black flex items-center justify-center gap-2 cursor-pointer active:scale-98 transition shadow-xs"
-            >
-              <Volume2 size={16} /> 🔊 Listen to OTP: <strong>{generatedOtp}</strong>
-            </button>
+            {/* Audio Guidance Bar — Only visible when Voice Mode is ON */}
+            {voiceEnabled && (
+              <button
+                onClick={() => speakAudio(getOtpHelp(generatedOtp, lang), lang)}
+                className="w-full py-2.5 my-2 rounded-2xl bg-amber-400 border-2 border-amber-500 text-slate-950 text-xs font-black flex items-center justify-center gap-2 cursor-pointer active:scale-98 transition shadow-xs"
+              >
+                <Volume2 size={16} /> 🔊 Listen to OTP: <strong>{generatedOtp}</strong>
+              </button>
+            )}
 
             <div className="flex justify-center gap-3 mb-4">
               {otp.map((digit, idx) => (
@@ -945,14 +965,28 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
         <div className="bg-white rounded-3xl shadow-xl p-5 border-2 border-slate-300">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-black" style={{ color: NAVY_DEEP }}>Customer Login</h2>
+            {/* Master Speaker Toggle in Header */}
             <button
-              onClick={() => speakAudio(getLoginHelp(lang), lang)}
-              className="px-3.5 py-1.5 rounded-full bg-amber-400 text-slate-950 border border-amber-500 text-xs font-black flex items-center gap-1.5 cursor-pointer active:scale-95 transition shadow-xs"
+              onClick={onToggleVoice}
+              className={`p-2 rounded-full border-2 transition cursor-pointer active:scale-95 flex items-center justify-center ${
+                voiceEnabled ? "bg-amber-400 text-slate-950 border-amber-500 ring-2 ring-amber-400" : "bg-slate-100 text-slate-600 border-slate-300"
+              }`}
+              title="Toggle Voice Guidance"
             >
-              <Volume2 size={15} /> 🔊 Voice Help
+              {voiceEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
             </button>
           </div>
           <p className="text-xs font-semibold text-slate-500 mb-4">Enter your name and mobile number. We'll send you a 4-digit OTP.</p>
+
+          {/* Voice Help Banner — Only visible when Voice Mode is ON */}
+          {voiceEnabled && (
+            <button
+              onClick={() => speakAudio(getLoginHelp(lang), lang)}
+              className="w-full py-2.5 mb-3 rounded-2xl bg-amber-400 border-2 border-amber-500 text-slate-950 text-xs font-black flex items-center justify-center gap-2 cursor-pointer active:scale-98 transition shadow-xs"
+            >
+              <Volume2 size={16} /> 🔊 Voice Help
+            </button>
+          )}
 
           <label className="flex items-center gap-2 border-2 border-slate-300 rounded-2xl px-3.5 py-3 mb-3 bg-slate-50">
             <User size={18} className="text-slate-500" />
@@ -1005,7 +1039,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
             Join as a Customer
           </button>
 
-          <LangChips selected={lang} onSelect={(l) => { setLang(l); speakAudio(getLoginHelp(l), l); }} />
+          <LangChips selected={lang} onSelect={(l) => { setLang(l); if (voiceEnabled) speakAudio(getLoginHelp(l), l); }} voiceEnabled={voiceEnabled} />
         </div>
 
         <button
@@ -1025,8 +1059,8 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
 }
 
 // ─── PHONE OTP LOGIN — Provider ───────────────────────────────────────────────
-function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
-  onLogin: () => void; goCustomer: () => void; notify: (m: string) => void; onOpenOwner: () => void;
+function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner, voiceEnabled, onToggleVoice }: {
+  onLogin: () => void; goCustomer: () => void; notify: (m: string) => void; onOpenOwner: () => void; voiceEnabled: boolean; onToggleVoice: () => void;
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -1063,7 +1097,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedOtp(code);
 
-    speakAudio(`OTP ${code}.`);
+    if (voiceEnabled) speakAudio(`OTP ${code}.`);
 
     setTimeout(() => {
       setLoading(false);
@@ -1089,7 +1123,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
     if (code.length < 4) { setError("Please enter the 4-digit OTP."); return; }
     if (code !== generatedOtp && code !== "1234") { setError(`Incorrect OTP. Try ${generatedOtp}.`); return; }
     setError(""); setLoading(true);
-    speakAudio("Provider login.");
+    if (voiceEnabled) speakAudio("Provider login.");
     setTimeout(() => { setLoading(false); onLogin(); }, 400);
   };
 
@@ -1117,12 +1151,14 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
             <h2 className="text-xl font-black text-center" style={{ color: NAVY_DEEP }}>Enter OTP</h2>
             <p className="text-center text-xs font-semibold text-slate-500 mt-1 mb-1">Sent to +91 {phone}</p>
             
-            <button
-              onClick={() => speakAudio(`OTP ${generatedOtp}.`)}
-              className="w-full py-2 my-2 rounded-xl bg-amber-400 border-2 border-amber-500 text-slate-950 text-xs font-black flex items-center justify-center gap-2 cursor-pointer active:scale-98 transition shadow-xs"
-            >
-              <Volume2 size={15} /> 🔊 Listen to OTP: <strong>{generatedOtp}</strong>
-            </button>
+            {voiceEnabled && (
+              <button
+                onClick={() => speakAudio(`OTP ${generatedOtp}.`)}
+                className="w-full py-2 my-2 rounded-xl bg-amber-400 border-2 border-amber-500 text-slate-950 text-xs font-black flex items-center justify-center gap-2 cursor-pointer active:scale-98 transition shadow-xs"
+              >
+                <Volume2 size={15} /> 🔊 Listen to OTP: <strong>{generatedOtp}</strong>
+              </button>
+            )}
 
             <div className="flex justify-center gap-3 mb-4">
               {otp.map((digit, idx) => (
@@ -1240,7 +1276,9 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
   );
 }
 
-function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }: { onOpenWorker: (w: any) => void; profileImg: string; onOpenProfile: () => void; notify?: (m: string) => void; lang?: string }) {
+function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang, voiceEnabled, onToggleVoice }: {
+  onOpenWorker: (w: any) => void; profileImg: string; onOpenProfile: () => void; notify?: (m: string) => void; lang?: string; voiceEnabled: boolean; onToggleVoice: () => void;
+}) {
   const [category, setCategory] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const { loc, status, placeName, retry } = useUserLocation();
@@ -1260,6 +1298,16 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
     speakAudio(summary, lang);
   };
 
+  const handleCategoryClick = (catName: string) => {
+    const isSel = category === catName;
+    const nextCat = isSel ? null : catName;
+    setCategory(nextCat);
+    // When pressing category button (e.g. Electrician), speak the job voice!
+    if (nextCat) {
+      speakCategoryName(nextCat, lang);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-white">
       <TopBar
@@ -1267,16 +1315,21 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
         right={<Avatar size={34} name={profileImg} onClick={onOpenProfile} />}
         audioText={lang === "ಕನ್ನಡ" ? `ಸೇವಾ ಪಟ್ಟಿ.` : `Find Services screen.`}
         lang={lang}
+        voiceEnabled={voiceEnabled}
+        onToggleVoice={onToggleVoice}
       />
       <div className="flex-1 overflow-y-auto px-4 pb-4">
         <div className="flex items-center justify-between mt-4 mb-2">
           <h2 className="text-xl font-black tracking-tight" style={{ color: NAVY_DEEP }}>Find Services</h2>
-          <button
-            onClick={speakScreenHelp}
-            className="px-3.5 py-1.5 rounded-full bg-amber-400 text-slate-950 border border-amber-500 text-xs font-black flex items-center gap-1 cursor-pointer active:scale-95 transition shadow-xs"
-          >
-            <Volume2 size={15} /> 🔊 Voice Help
-          </button>
+          {/* Orange Voice Help Button — ONLY VISIBLE WHEN VOICE MODE IS ON */}
+          {voiceEnabled && (
+            <button
+              onClick={speakScreenHelp}
+              className="px-3.5 py-1.5 rounded-full bg-amber-400 text-slate-950 border border-amber-500 text-xs font-black flex items-center gap-1 cursor-pointer active:scale-95 transition shadow-xs"
+            >
+              <Volume2 size={15} /> 🔊 Voice Help
+            </button>
+          )}
         </div>
 
         <label className="flex items-center gap-2 border-2 border-slate-300 rounded-2xl px-3.5 py-3 shadow-xs bg-slate-50">
@@ -1299,14 +1352,14 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
           )}
         </div>
         
-        {/* Visual Category Photo Cards — Silent Filter */}
+        {/* Visual Category Photo Cards — Speaks Voice on Press */}
         <div className="grid grid-cols-2 gap-2.5">
           {CATEGORIES.map((c) => {
             const isSel = category === c.name;
             return (
               <button
                 key={c.name}
-                onClick={() => setCategory(isSel ? null : c.name)}
+                onClick={() => handleCategoryClick(c.name)}
                 className="flex items-center gap-2.5 p-2.5 rounded-2xl border-2 transition cursor-pointer text-left active:scale-[0.98] shadow-xs"
                 style={isSel ? { background: NAVY, borderColor: NAVY, color: "white" } : { background: SKY, borderColor: "#CBD5E1", color: "#0F172A" }}
               >
@@ -1371,13 +1424,16 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
                   </div>
                 </div>
               </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); speakWorkerJob(w, lang); }}
-                className="p-2.5 rounded-xl bg-amber-400 text-slate-950 hover:bg-amber-300 cursor-pointer flex-shrink-0 border-2 border-amber-500 active:scale-95 transition font-black text-xs flex items-center gap-1 shadow-sm"
-                title="Listen to worker job bio"
-              >
-                <Volume2 size={17} /> 🔊
-              </button>
+              {/* Speaker Button on Worker Cards — ONLY VISIBLE WHEN VOICE MODE IS ON */}
+              {voiceEnabled && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); speakWorkerJob(w, lang); }}
+                  className="p-2.5 rounded-xl bg-amber-400 text-slate-950 hover:bg-amber-300 cursor-pointer flex-shrink-0 border-2 border-amber-500 active:scale-95 transition font-black text-xs flex items-center gap-1 shadow-sm"
+                  title="Listen to worker job bio"
+                >
+                  <Volume2 size={17} /> 🔊
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -1387,7 +1443,9 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
   );
 }
 
-function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify, lang }: { onOpenWorker: (w: any) => void; profileImg: string; onOpenProfile: () => void; notify: (m: string) => void; lang?: string }) {
+function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify, lang, voiceEnabled, onToggleVoice }: {
+  onOpenWorker: (w: any) => void; profileImg: string; onOpenProfile: () => void; notify: (m: string) => void; lang?: string; voiceEnabled: boolean; onToggleVoice: () => void;
+}) {
   const [trade, setTrade] = useState("All Trades");
   const { loc, status, placeName, retry } = useUserLocation();
   const nearby = withDistances(INITIAL_WORKERS, loc);
@@ -1401,13 +1459,15 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify, lang }: { 
         right={<Avatar size={34} name={profileImg} onClick={onOpenProfile} />}
         audioText={`Nearby Map view.`}
         lang={lang}
+        voiceEnabled={voiceEnabled}
+        onToggleVoice={onToggleVoice}
       />
       <div className="flex-1 overflow-y-auto pb-4">
         <div className="px-4 pt-3"><LocationBanner status={status} placeName={placeName} retry={retry} /></div>
         
         {/* Interactive Map Header */}
         <div
-          onClick={() => { speakAudio(`Map view showing ${visibleWorkers.length} nearby service specialists.`, lang); }}
+          onClick={() => { if (voiceEnabled) speakAudio(`Map view showing ${visibleWorkers.length} nearby service specialists.`, lang); }}
           className="relative h-44 m-4 mt-2 rounded-2xl overflow-hidden cursor-pointer shadow-inner border-2 border-slate-300"
           style={{ background: "linear-gradient(135deg,#DCEFE0,#C9E4D3)" }}
         >
@@ -1421,11 +1481,11 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify, lang }: { 
               color={NAVY}
               className="absolute cursor-pointer hover:scale-125 transition-transform"
               style={{ left: `${x}%`, top: `${y}%` }}
-              onClick={(e) => { e.stopPropagation(); speakAudio(`Worker ${i + 1} located nearby`, lang); }}
+              onClick={(e) => { e.stopPropagation(); if (voiceEnabled) speakAudio(`Worker ${i + 1} located nearby`, lang); }}
             />
           ))}
           <div
-            onClick={(e) => { e.stopPropagation(); speakAudio(`${activeNearby} specialists available within 3 kilometers`, lang); }}
+            onClick={(e) => { e.stopPropagation(); if (voiceEnabled) speakAudio(`${activeNearby} specialists available within 3 kilometers`, lang); }}
             className="absolute bottom-2 left-2 bg-white/95 rounded-full px-3 py-1.5 text-xs font-black flex items-center gap-1.5 shadow-md border border-slate-300 cursor-pointer hover:scale-105 transition"
             style={{ color: NAVY }}
           >
@@ -1441,7 +1501,10 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify, lang }: { 
               return (
                 <button
                   key={t}
-                  onClick={() => setTrade(t)}
+                  onClick={() => {
+                    setTrade(t);
+                    if (t !== "All Trades") speakCategoryName(t, lang);
+                  }}
                   className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer active:scale-95 transition border-2"
                   style={isSel ? { background: NAVY, color: "white", borderColor: NAVY } : { border: "2px solid #CBD5E1", color: "#334155" }}
                 >
@@ -1464,10 +1527,10 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify, lang }: { 
                   </div>
                 </button>
                 <div className="flex gap-2 mt-2.5">
-                  <button onClick={() => { notify(`Calling ${w.name.split(" ")[0]}…`); speakAudio(`Calling ${w.name.split(" ")[0]}`, lang); }} className="flex-1 py-2 rounded-xl text-white text-xs font-extrabold flex items-center justify-center gap-1 active:opacity-80 cursor-pointer shadow-sm" style={{ background: NAVY }}>
+                  <button onClick={() => { notify(`Calling ${w.name.split(" ")[0]}…`); if (voiceEnabled) speakAudio(`Calling ${w.name.split(" ")[0]}`, lang); }} className="flex-1 py-2 rounded-xl text-white text-xs font-extrabold flex items-center justify-center gap-1 active:opacity-80 cursor-pointer shadow-sm" style={{ background: NAVY }}>
                     <Phone size={13} /> Call Now
                   </button>
-                  <button onClick={() => { notify(`Opening chat with ${w.name.split(" ")[0]}…`); speakAudio(`Messaging ${w.name.split(" ")[0]}`, lang); }} className="flex-1 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1 border-2 active:opacity-80 cursor-pointer" style={{ borderColor: NAVY, color: NAVY }}>
+                  <button onClick={() => { notify(`Opening chat with ${w.name.split(" ")[0]}…`); if (voiceEnabled) speakAudio(`Messaging ${w.name.split(" ")[0]}`, lang); }} className="flex-1 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1 border-2 active:opacity-80 cursor-pointer" style={{ borderColor: NAVY, color: NAVY }}>
                     <MessageSquare size={13} /> Message
                   </button>
                 </div>
@@ -1480,22 +1543,26 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify, lang }: { 
   );
 }
 
-function WorkerProfile({ worker, onBack, onBook, profileImg, notify, lang }: { worker: any; onBack: () => void; onBook: () => void; profileImg: string; notify: (m: string) => void; lang?: string }) {
+function WorkerProfile({ worker, onBack, onBook, profileImg, notify, lang, voiceEnabled, onToggleVoice }: {
+  worker: any; onBack: () => void; onBook: () => void; profileImg: string; notify: (m: string) => void; lang?: string; voiceEnabled: boolean; onToggleVoice: () => void;
+}) {
   return (
     <div className="h-full flex flex-col bg-white overflow-y-auto" style={{ background: "#FDFBF8" }}>
-      <TopBar title="Neighborly Trust" onBack={onBack} right={<Avatar size={32} name={profileImg} />} audioText={`${worker.name}, ${worker.role}.`} lang={lang} />
+      <TopBar title="Neighborly Trust" onBack={onBack} right={<Avatar size={32} name={profileImg} />} audioText={`${worker.name}, ${worker.role}.`} lang={lang} voiceEnabled={voiceEnabled} onToggleVoice={onToggleVoice} />
       <div className="px-4 pb-6">
         <div className="relative mt-3">
           <ServiceImage icon={worker.icon} className="w-full h-52 rounded-3xl shadow-lg border-2 border-slate-300" iconSize={56} jobCategory={worker.category} jobPhoto={worker.jobPhoto} />
           <span className="absolute bottom-2.5 left-2.5 bg-blue-950/90 text-white text-xs font-black px-3 py-1 rounded-full flex items-center gap-1 backdrop-blur border border-blue-400">
             <ShieldCheck size={14} /> Verified Pro
           </span>
-          <button
-            onClick={() => speakWorkerJob(worker, lang)}
-            className="absolute bottom-2.5 right-2.5 bg-amber-400 border-2 border-amber-500 text-slate-950 font-black text-xs px-3.5 py-1.5 rounded-full shadow-md flex items-center gap-1 cursor-pointer active:scale-95 transition"
-          >
-            <Volume2 size={16} /> 🔊 Voice Bio
-          </button>
+          {voiceEnabled && (
+            <button
+              onClick={() => speakWorkerJob(worker, lang)}
+              className="absolute bottom-2.5 right-2.5 bg-amber-400 border-2 border-amber-500 text-slate-950 font-black text-xs px-3.5 py-1.5 rounded-full shadow-md flex items-center gap-1 cursor-pointer active:scale-95 transition"
+            >
+              <Volume2 size={16} /> 🔊 Voice Bio
+            </button>
+          )}
         </div>
 
         <h1 className="text-xl font-black mt-3 tracking-tight" style={{ color: NAVY_DEEP }}>{worker.name}</h1>
@@ -1541,7 +1608,7 @@ function WorkerProfile({ worker, onBack, onBook, profileImg, notify, lang }: { w
         </div>
 
         <button
-          onClick={() => { speakAudio(`Booking request submitted for ${worker.name}`, lang); onBook(); }}
+          onClick={() => { if (voiceEnabled) speakAudio(`Booking request submitted for ${worker.name}`, lang); onBook(); }}
           className="w-full mt-5 py-4 rounded-2xl text-white font-black shadow-xl cursor-pointer active:scale-[0.98] transition flex items-center justify-center gap-2 text-sm"
           style={{ background: NAVY }}
         >
@@ -1552,9 +1619,9 @@ function WorkerProfile({ worker, onBack, onBook, profileImg, notify, lang }: { w
   );
 }
 
-function BookingConfirm({ worker, onDone, lang }: { worker: any; onDone: () => void; lang?: string }) {
+function BookingConfirm({ worker, onDone, lang, voiceEnabled }: { worker: any; onDone: () => void; lang?: string; voiceEnabled?: boolean }) {
   useEffect(() => {
-    speakAudio(`Booking request submitted for ${worker.name}.`, lang);
+    if (voiceEnabled) speakAudio(`Booking request submitted for ${worker.name}.`, lang);
   }, []);
 
   return (
@@ -1567,12 +1634,14 @@ function BookingConfirm({ worker, onDone, lang }: { worker: any; onDone: () => v
         {worker.name} has been notified. They'll call or message you shortly to confirm timing and price.
       </p>
 
-      <button
-        onClick={() => speakAudio(`Booking confirmed with ${worker.name}, ${worker.role}.`, lang)}
-        className="my-4 px-4 py-2 rounded-full bg-amber-400 text-slate-950 border border-amber-500 font-black text-xs flex items-center gap-1.5 shadow-md cursor-pointer hover:bg-amber-300 transition"
-      >
-        <Volume2 size={16} /> 🔊 Read Confirmation
-      </button>
+      {voiceEnabled && (
+        <button
+          onClick={() => speakAudio(`Booking confirmed with ${worker.name}, ${worker.role}.`, lang)}
+          className="my-4 px-4 py-2 rounded-full bg-amber-400 text-slate-950 border border-amber-500 font-black text-xs flex items-center gap-1.5 shadow-md cursor-pointer hover:bg-amber-300 transition"
+        >
+          <Volume2 size={16} /> 🔊 Read Confirmation
+        </button>
+      )}
 
       <div className="bg-white rounded-2xl p-4 mt-2 w-full max-w-xs text-left shadow-md border-2 border-slate-300">
         <div className="flex items-center gap-3">
@@ -1624,13 +1693,17 @@ function RateWorkerCard({ worker, existingRating, onSubmit }: { worker: any; exi
   );
 }
 
-function MyBookings({ bookings, onMarkComplete, onRate, lang }: { bookings: any[]; onMarkComplete: (id: string) => void; onRate: (id: string, r: number) => void; lang?: string }) {
+function MyBookings({ bookings, onMarkComplete, onRate, lang, voiceEnabled, onToggleVoice }: {
+  bookings: any[]; onMarkComplete: (id: string) => void; onRate: (id: string, r: number) => void; lang?: string; voiceEnabled: boolean; onToggleVoice: () => void;
+}) {
   return (
     <div className="h-full flex flex-col bg-white">
       <TopBar
         title="My Bookings"
         audioText={`My Bookings page. You have ${bookings.length} active service bookings recorded.`}
         lang={lang}
+        voiceEnabled={voiceEnabled}
+        onToggleVoice={onToggleVoice}
       />
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {bookings.length === 0 ? (
@@ -1653,12 +1726,14 @@ function MyBookings({ bookings, onMarkComplete, onRate, lang }: { bookings: any[
                     {b.status}
                   </span>
                 </div>
-                <button
-                  onClick={() => speakWorkerJob(b.worker, lang)}
-                  className="p-2.5 rounded-xl bg-amber-400 text-slate-950 font-bold cursor-pointer border border-amber-500 shadow-xs"
-                >
-                  <Volume2 size={16} />
-                </button>
+                {voiceEnabled && (
+                  <button
+                    onClick={() => speakWorkerJob(b.worker, lang)}
+                    className="p-2.5 rounded-xl bg-amber-400 text-slate-950 font-bold cursor-pointer border border-amber-500 shadow-xs"
+                  >
+                    <Volume2 size={16} />
+                  </button>
+                )}
               </div>
               {b.status === "Pending Confirmation" && (
                 <button
@@ -1782,10 +1857,13 @@ function NotificationsScreen({ onBack, notify }: { onBack: () => void; notify?: 
   );
 }
 
-function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwner, notify, lang, onSetLang }: { onLogout: () => void; profile: any; onSaveProfile: (p: any) => void; onOpenBookings: () => void; onOpenOwner: () => void; notify?: (m: string) => void; lang?: string; onSetLang: (l: string) => void }) {
+function Settings({
+  onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwner, notify, lang, onSetLang, voiceEnabled, onToggleVoice
+}: {
+  onLogout: () => void; profile: any; onSaveProfile: (p: any) => void; onOpenBookings: () => void; onOpenOwner: () => void; notify?: (m: string) => void; lang?: string; onSetLang: (l: string) => void; voiceEnabled: boolean; onToggleVoice: () => void;
+}) {
   const [view, setView] = useState("main");
   const [sound, setSound] = useState(true);
-  const [voice, setVoice] = useState(true);
   const [clickCount, setClickCount] = useState(0);
 
   const triggerOwnerCheck = () => {
@@ -1835,7 +1913,7 @@ function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwne
           onSetLang(l);
           setView("main");
           if (notify) notify(`Language set to ${l}`);
-          speakAudio(getLoginHelp(l), l);
+          if (voiceEnabled) speakAudio(getLoginHelp(l), l);
         }}
       />
     );
@@ -1849,6 +1927,8 @@ function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwne
         right={<Avatar size={34} name={profile.name} />}
         audioText={`Settings menu.`}
         lang={lang}
+        voiceEnabled={voiceEnabled}
+        onToggleVoice={onToggleVoice}
       />
       <div className="flex-1 overflow-y-auto px-4 pb-4">
         <Section title="ACCOUNT" />
@@ -1859,7 +1939,7 @@ function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwne
         <Section title="AUDIO & ACCESSIBILITY" />
         <Row icon={Volume2} title="App Sounds" sub="Feedback for clicks and actions" onClick={() => { const next = !sound; setSound(next); if (notify) notify(`App Sounds turned ${next ? 'ON' : 'OFF'}`); }} right={<Toggle on={sound} set={setSound} label="App Sounds" />} />
         <div className="h-px bg-slate-200" />
-        <Row icon={Mic} title="Voice Guidance" sub="Text-to-speech support for low literacy" onClick={() => { const next = !voice; setVoice(next); if (notify) notify(`Voice Guidance turned ${next ? 'ON' : 'OFF'}`); speakAudio(`Voice Guidance turned ${next ? 'ON' : 'OFF'}`, lang); }} right={<Toggle on={voice} set={setVoice} label="Voice Guidance" />} />
+        <Row icon={Mic} title="Voice Guidance Mode" sub="Show orange speaker buttons for low literacy" onClick={onToggleVoice} right={<Toggle on={voiceEnabled} set={onToggleVoice} label="Voice Guidance" />} />
 
         <Section title="PREFERENCES" />
         <Row icon={Bell} title="Notifications" sub="Alerts, SMS, and Email" onClick={() => setView("notifications")} right={<span className="text-slate-400 font-bold">›</span>} />
@@ -2157,6 +2237,7 @@ function ProviderDashboard({ onOpenSettings, profileImg, online, setOnline, list
 export default function App() {
   const [mode, setMode] = useState("login"); // login | customer | provider | owner
   const [lang, setLang] = useState("ಕನ್ನಡ");
+  const [voiceEnabled, setVoiceEnabled] = useState(false); // Default OFF — Orange buttons hidden until Speaker button is tapped
   const [tab, setTab] = useState("find");
   const [worker, setWorker] = useState<any>(null);
   const [justBooked, setJustBooked] = useState<any>(null);
@@ -2176,6 +2257,15 @@ export default function App() {
   const notify = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 2200);
+  };
+
+  const toggleVoiceMode = () => {
+    const next = !voiceEnabled;
+    setVoiceEnabled(next);
+    if (!next) {
+      stopAudio();
+    }
+    notify(next ? "Voice Guidance ON — Orange buttons visible" : "Voice Guidance OFF — Hidden");
   };
 
   const handleLogout = () => {
@@ -2301,10 +2391,21 @@ export default function App() {
         goProvider={() => setMode("provider-login")}
         notify={notify}
         onOpenOwner={() => setShowOwnerPinModal(true)}
+        voiceEnabled={voiceEnabled}
+        onToggleVoice={toggleVoiceMode}
       />
     );
   } else if (mode === "provider-login") {
-    screen = <ProviderLogin onLogin={() => setMode("provider")} goCustomer={() => setMode("login")} notify={notify} onOpenOwner={() => setShowOwnerPinModal(true)} />;
+    screen = (
+      <ProviderLogin
+        onLogin={() => setMode("provider")}
+        goCustomer={() => setMode("login")}
+        notify={notify}
+        onOpenOwner={() => setShowOwnerPinModal(true)}
+        voiceEnabled={voiceEnabled}
+        onToggleVoice={toggleVoiceMode}
+      />
+    );
   } else if (mode === "provider") {
     if (providerTab === "dashboard") {
       screen = (
@@ -2346,6 +2447,8 @@ export default function App() {
           notify={notify}
           lang={lang}
           onSetLang={setLang}
+          voiceEnabled={voiceEnabled}
+          onToggleVoice={toggleVoiceMode}
         />
       );
     }
@@ -2359,6 +2462,8 @@ export default function App() {
           onBook={() => createBooking(worker)}
           notify={notify}
           lang={lang}
+          voiceEnabled={voiceEnabled}
+          onToggleVoice={toggleVoiceMode}
         />
       );
     } else if (justBooked) {
@@ -2367,18 +2472,48 @@ export default function App() {
           worker={justBooked}
           onDone={() => { setJustBooked(null); setWorker(null); setTab("bookings"); }}
           lang={lang}
+          voiceEnabled={voiceEnabled}
         />
       );
     } else if (tab === "find") {
-      screen = <FindServices profileImg={customerProfile.name} onOpenWorker={setWorker} onOpenProfile={() => setTab("profile")} notify={notify} lang={lang} />;
+      screen = (
+        <FindServices
+          profileImg={customerProfile.name}
+          onOpenWorker={setWorker}
+          onOpenProfile={() => setTab("profile")}
+          notify={notify}
+          lang={lang}
+          voiceEnabled={voiceEnabled}
+          onToggleVoice={toggleVoiceMode}
+        />
+      );
     } else if (tab === "map") {
-      screen = <MapNearby profileImg={customerProfile.name} onOpenWorker={setWorker} onOpenProfile={() => setTab("profile")} notify={notify} lang={lang} />;
+      screen = (
+        <MapNearby
+          profileImg={customerProfile.name}
+          onOpenWorker={setWorker}
+          onOpenProfile={() => setTab("profile")}
+          notify={notify}
+          lang={lang}
+          voiceEnabled={voiceEnabled}
+          onToggleVoice={toggleVoiceMode}
+        />
+      );
     } else if (tab === "bookings") {
-      screen = <MyBookings bookings={bookings} onMarkComplete={markBookingComplete} onRate={rateBooking} lang={lang} />;
+      screen = (
+        <MyBookings
+          bookings={bookings}
+          onMarkComplete={markBookingComplete}
+          onRate={rateBooking}
+          lang={lang}
+          voiceEnabled={voiceEnabled}
+          onToggleVoice={toggleVoiceMode}
+        />
+      );
     } else if (tab === "messages") {
       screen = (
         <div className="h-full flex flex-col bg-white">
-          <TopBar title="Messages" audioText="Messages inbox. No active conversations." lang={lang} />
+          <TopBar title="Messages" audioText="Messages inbox. No active conversations." lang={lang} voiceEnabled={voiceEnabled} onToggleVoice={toggleVoiceMode} />
           <div className="flex-1 flex items-center justify-center text-center px-6">
             <div>
               <MessageSquare size={40} className="mx-auto text-slate-400" />
@@ -2398,6 +2533,8 @@ export default function App() {
           notify={notify}
           lang={lang}
           onSetLang={setLang}
+          voiceEnabled={voiceEnabled}
+          onToggleVoice={toggleVoiceMode}
         />
       );
     }
@@ -2416,7 +2553,7 @@ export default function App() {
         {showProviderNav && (
           <BottomNav tabs={providerTabs} active={providerTab} onChange={setProviderTab} />
         )}
-        <VoiceSubtitleBanner />
+        <VoiceSubtitleBanner voiceEnabled={voiceEnabled} />
         <Toast message={toast} />
 
         {/* OWNER SECURITY PIN MODAL */}
