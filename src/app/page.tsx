@@ -8,6 +8,7 @@ import {
   AlertCircle, Database, Server, Cpu, ShieldAlert, Eye, RefreshCw, Key, VolumeX, Sparkles
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { speakAudio, stopAudio, registerSpeakListener, normalizeLangKey } from "@/lib/audio";
 
 /* ---------------------------------------------------------
    NEIGHBORLY TRUST — High Precision & Multi-lingual Engine
@@ -21,25 +22,13 @@ const GOLD = "#F5A623";
 
 const LANGS = ["English", "हिंदी", "বাংলা", "తెలుగు", "मराठी", "தமிழ்", "ગુજરાતી", "ಕನ್ನಡ", "മലയാളം", "ਪੰਜਾਬੀ"];
 
-const LANG_BCP47: Record<string, string> = {
-  "English": "en-IN",
-  "हिंदी": "hi-IN",
-  "বাংলা": "bn-IN",
-  "తెలుగు": "te-IN",
-  "मराठी": "mr-IN",
-  "தமிழ்": "ta-IN",
-  "ગુજરાતી": "gu-IN",
-  "ಕನ್ನಡ": "kn-IN",
-  "മലയാളം": "ml-IN",
-  "ਪੰਜਾਬੀ": "pa-IN",
-};
-
 // Multi-lingual Audio & Simple Words Helper
 function getLoginHelp(lang: string) {
-  switch (lang) {
+  const norm = normalizeLangKey(lang);
+  switch (norm) {
     case "ಕನ್ನಡ": return "ಹೆಸರು ಮತ್ತು ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಹಾಕಿ. ಓಟಿಪಿ ಒತ್ತಿ.";
     case "हिंदी": return "नाम और मोबाइल नंबर डालें। ओटीपी दबाएं।";
-    case "తెలుగు": return "పేరు మరియు మొಬೈಲ್ ನಂಬರ್ వేయండి. ఓటీపీ నొక్కండి.";
+    case "తెలుగు": return "పేరు మరియు మొಬైల్ ನಂಬర్ వేయండి. ఓటీపీ నొక్కండి.";
     case "தமிழ்": return "பெயர் மற்றும் மொபைல் எண் உள்ளிடவும். OTP அழுத்தவும்.";
     case "मराठी": return "नाव आणि मोबाईल नंबर टाका. ओटीपी दाबा.";
     case "বাংলা": return "নাম এবং মোবাইল নম্বর দিন। ওটিপি চাপুন।";
@@ -51,7 +40,8 @@ function getLoginHelp(lang: string) {
 }
 
 function getOtpHelp(code: string, lang: string) {
-  switch (lang) {
+  const norm = normalizeLangKey(lang);
+  switch (norm) {
     case "ಕನ್ನಡ": return `ಓಟಿಪಿ ಸಂಖ್ಯೆ ${code}.`;
     case "हिंदी": return `ओटीपी कोड ${code}.`;
     case "తెలుగు": return `ఓటీపీ కోడ్ ${code}.`;
@@ -167,80 +157,18 @@ function sanitizeText(input: string): string {
     .replace(/\//g, "&#x2F;");
 }
 
-// Zero-Latency Multi-lingual Text-to-Speech Engine
-let globalSpeakListener: ((text: string) => void) | null = null;
-let cachedVoices: SpeechSynthesisVoice[] = [];
-
-if (typeof window !== "undefined" && "speechSynthesis" in window) {
-  cachedVoices = window.speechSynthesis.getVoices();
-  window.speechSynthesis.onvoiceschanged = () => {
-    cachedVoices = window.speechSynthesis.getVoices();
-  };
-}
-
-function speakAudio(text: string, langName: string = "English") {
-  if (typeof window === "undefined") return;
-
-  if (globalSpeakListener) {
-    globalSpeakListener(text);
-  }
-
-  // Exact BCP47 lookup for multi-lingual audio
-  const targetLang = LANG_BCP47[langName] || "en-IN";
-  const shortLang = targetLang.split("-")[0];
-
-  if ("speechSynthesis" in window) {
-    try {
-      const synth = window.speechSynthesis;
-      synth.cancel();
-      if (synth.paused) synth.resume();
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = targetLang;
-      utterance.rate = 1.05;
-      utterance.pitch = 1.05;
-      utterance.volume = 1.0;
-
-      const voices = cachedVoices.length > 0 ? cachedVoices : synth.getVoices();
-      if (voices && voices.length > 0) {
-        const match = voices.find((v) => v.lang.toLowerCase() === targetLang.toLowerCase() || v.lang.toLowerCase().startsWith(shortLang));
-        if (match) utterance.voice = match;
-      }
-
-      synth.speak(utterance);
-      return;
-    } catch (e) {
-      console.warn("Native speech error, fallback to audio stream", e);
-    }
-  }
-
-  try {
-    const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${shortLang}&client=tw-ob`;
-    const audio = new Audio(ttsUrl);
-    audio.playbackRate = 1.05;
-    audio.play().catch(() => {});
-  } catch (e) {}
-}
-
-function stopAudio() {
-  if (typeof window !== "undefined" && "speechSynthesis" in window) {
-    window.speechSynthesis.cancel();
-  }
-  if (globalSpeakListener) globalSpeakListener("");
-}
-
 // Speak Category Name when category button is pressed
 function speakCategoryName(catName: string, langName: string = "English") {
-  const langKey = NATIVE_JOB_VOICE[langName] ? langName : "English";
-  const dict = NATIVE_JOB_VOICE[langKey] || NATIVE_JOB_VOICE["English"];
+  const normKey = normalizeLangKey(langName);
+  const dict = NATIVE_JOB_VOICE[normKey] || NATIVE_JOB_VOICE["English"];
   const phrase = dict[catName] || `${catName}.`;
   speakAudio(phrase, langName);
 }
 
 // Speak Ultra-Simple Worker Job Description (Sharp & Fast)
 function speakWorkerJob(worker: any, langName: string = "English") {
-  const langKey = NATIVE_JOB_VOICE[langName] ? langName : "English";
-  const dict = NATIVE_JOB_VOICE[langKey] || NATIVE_JOB_VOICE["English"];
+  const normKey = normalizeLangKey(langName);
+  const dict = NATIVE_JOB_VOICE[normKey] || NATIVE_JOB_VOICE["English"];
   const jobSpeech = dict[worker.category] || `${worker.role}.`;
   const text = `${worker.name}. ${jobSpeech}`;
   speakAudio(text, langName);
@@ -503,12 +431,10 @@ function VoiceSubtitleBanner({ voiceEnabled }: { voiceEnabled: boolean }) {
   const [subtitleText, setSubtitleText] = useState("");
 
   useEffect(() => {
-    globalSpeakListener = (text: string) => {
+    const unbind = registerSpeakListener((text: string) => {
       setSubtitleText(text);
-    };
-    return () => {
-      globalSpeakListener = null;
-    };
+    });
+    return unbind;
   }, []);
 
   if (!voiceEnabled || !subtitleText) return null;
@@ -1059,8 +985,8 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
 }
 
 // ─── PHONE OTP LOGIN — Provider ───────────────────────────────────────────────
-function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner, voiceEnabled, onToggleVoice }: {
-  onLogin: () => void; goCustomer: () => void; notify: (m: string) => void; onOpenOwner: () => void; voiceEnabled: boolean; onToggleVoice: () => void;
+function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner, voiceEnabled, onToggleVoice, lang }: {
+  onLogin: () => void; goCustomer: () => void; notify: (m: string) => void; onOpenOwner: () => void; voiceEnabled: boolean; onToggleVoice: () => void; lang: string;
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -1097,7 +1023,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner, voiceEnabled,
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedOtp(code);
 
-    if (voiceEnabled) speakAudio(`OTP ${code}.`);
+    if (voiceEnabled) speakAudio(getOtpHelp(code, lang), lang);
 
     setTimeout(() => {
       setLoading(false);
@@ -1123,7 +1049,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner, voiceEnabled,
     if (code.length < 4) { setError("Please enter the 4-digit OTP."); return; }
     if (code !== generatedOtp && code !== "1234") { setError(`Incorrect OTP. Try ${generatedOtp}.`); return; }
     setError(""); setLoading(true);
-    if (voiceEnabled) speakAudio("Provider login.");
+    if (voiceEnabled) speakAudio(lang === "ಕನ್ನಡ" || lang === "kn" ? "ಲಾಗಿನ್." : "Login successful.", lang);
     setTimeout(() => { setLoading(false); onLogin(); }, 400);
   };
 
@@ -1153,7 +1079,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner, voiceEnabled,
             
             {voiceEnabled && (
               <button
-                onClick={() => speakAudio(`OTP ${generatedOtp}.`)}
+                onClick={() => speakAudio(getOtpHelp(generatedOtp, lang), lang)}
                 className="w-full py-2 my-2 rounded-xl bg-amber-400 border-2 border-amber-500 text-slate-950 text-xs font-black flex items-center justify-center gap-2 cursor-pointer active:scale-98 transition shadow-xs"
               >
                 <Volume2 size={15} /> 🔊 Listen to OTP: <strong>{generatedOtp}</strong>
@@ -2398,6 +2324,7 @@ export default function App() {
   } else if (mode === "provider-login") {
     screen = (
       <ProviderLogin
+        lang={lang}
         onLogin={() => setMode("provider")}
         goCustomer={() => setMode("login")}
         notify={notify}

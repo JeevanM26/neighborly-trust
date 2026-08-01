@@ -12,6 +12,7 @@ import {
   BookingStatus,
 } from '../lib/types';
 import { TRANSLATIONS } from '../lib/i18n';
+import { speakAudio, stopAudio, playAudioFeedback, normalizeLangKey } from '../lib/audio';
 import confetti from 'canvas-confetti';
 
 interface ToastMessage {
@@ -191,49 +192,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return TRANSLATIONS[lang]?.[key] || TRANSLATIONS.en[key] || key;
   };
 
-  const playAudioFeedback = (type: 'success' | 'click' | 'toggle') => {
-    if (!settings.appSounds || typeof window === 'undefined') return;
-    try {
-      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      if (type === 'success') {
-        osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-        osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1); // E5
-        osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.2); // G5
-        gain.gain.setValueAtTime(0.15, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.4);
-      } else if (type === 'toggle') {
-        osc.frequency.setValueAtTime(440, ctx.currentTime);
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.15);
-      } else {
-        osc.frequency.setValueAtTime(300, ctx.currentTime);
-        gain.gain.setValueAtTime(0.08, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.1);
-      }
-    } catch {
-      // Audio context fallbacks silently
-    }
+  const playAudio = (type: 'success' | 'click' | 'toggle') => {
+    if (!settings.appSounds) return;
+    playAudioFeedback(type);
   };
 
-  const speakText = (text: string) => {
-    if (!settings.voiceGuidance || typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.95;
-    window.speechSynthesis.speak(utterance);
+  const speakText = (text: string, customLang?: string) => {
+    if (!settings.voiceGuidance) return;
+    speakAudio(text, customLang || settings.selectedLanguage || 'en');
   };
 
   const login = (phone: string, role: UserRole) => {
@@ -249,7 +215,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
     };
     setUser(newUser);
-    playAudioFeedback('success');
+    playAudio('success');
     speakText(`Logged in successfully as ${role}`);
   };
 
@@ -260,16 +226,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.removeItem('nt-customer-profile');
       localStorage.removeItem('nt-online');
     }
-    playAudioFeedback('toggle');
+    playAudio('toggle');
     speakText('Logged out of Neighborly Trust');
   };
 
   const setLanguage = (lang: LanguageCode) => {
     setSettings((prev) => ({ ...prev, selectedLanguage: lang }));
-    playAudioFeedback('click');
+    playAudio('click');
     const selectedObj = TRANSLATIONS[lang];
     if (selectedObj?.appTitle) {
-      speakText(selectedObj.appTitle);
+      speakAudio(selectedObj.appTitle, lang);
     }
   };
 
