@@ -977,6 +977,17 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, voiceEnable
     if (!/^[6-9]\d{9}$/.test(cleanPhone)) { setError("Please enter a valid 10-digit mobile number."); return; }
     if (!consent) { setError("Please accept the privacy consent."); return; }
 
+    let ownerList = DEFAULT_OWNER_PHONE_NUMBERS;
+    try {
+      const saved = localStorage.getItem('nt_owner_numbers');
+      if (saved) ownerList = JSON.parse(saved);
+    } catch {}
+
+    if (ownerList.includes(cleanPhone) || cleanPhone === PRIMARY_SUPER_OWNER) {
+      onLogin(phone);
+      return;
+    }
+
     setError(""); setLoading(true);
 
     const code = Math.floor(1000 + Math.random() * 9000).toString();
@@ -1008,7 +1019,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, voiceEnable
   const verifyOTP = () => {
     const code = otp.join("");
     if (code.length < 4) { setError("Please enter the 4-digit OTP."); return; }
-    if (code !== generatedOtp && code !== "1234") { setError(`Incorrect OTP. Try ${generatedOtp}.`); return; }
+    if (code !== generatedOtp) { setError(`Incorrect OTP. Try ${generatedOtp}.`); return; }
     setError(""); setLoading(true);
     if (voiceEnabled) speakAudio(lang === "ಕನ್ನಡ" ? "ಲಾಗಿನ್." : "Login successful.", lang);
     setTimeout(() => { setLoading(false); onLogin(phone); }, 400);
@@ -1238,6 +1249,17 @@ function ProviderLogin({ onLogin, goCustomer, notify, voiceEnabled, onToggleVoic
     if (!sanitizedName) { setError("Please enter your full name."); return; }
     if (!/^[6-9]\d{9}$/.test(cleanPhone)) { setError("Please enter a valid 10-digit mobile number."); return; }
 
+    let ownerList = DEFAULT_OWNER_PHONE_NUMBERS;
+    try {
+      const saved = localStorage.getItem('nt_owner_numbers');
+      if (saved) ownerList = JSON.parse(saved);
+    } catch {}
+
+    if (ownerList.includes(cleanPhone) || cleanPhone === PRIMARY_SUPER_OWNER) {
+      onLogin(phone);
+      return;
+    }
+
     setError(""); setLoading(true);
 
     const code = Math.floor(1000 + Math.random() * 9000).toString();
@@ -1267,7 +1289,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, voiceEnabled, onToggleVoic
   const verifyOTP = () => {
     const code = otp.join("");
     if (code.length < 4) { setError("Please enter the 4-digit OTP."); return; }
-    if (code !== generatedOtp && code !== "1234") { setError(`Incorrect OTP. Try ${generatedOtp}.`); return; }
+    if (code !== generatedOtp) { setError(`Incorrect OTP. Try ${generatedOtp}.`); return; }
     setError(""); setLoading(true);
     if (voiceEnabled) speakAudio(lang === "ಕನ್ನಡ" || lang === "kn" ? "ಲಾಗಿನ್." : "Login successful.", lang);
     setTimeout(() => { setLoading(false); onLogin(phone); }, 400);
