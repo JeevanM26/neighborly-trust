@@ -9,7 +9,7 @@ export interface TelegramConfig {
 }
 
 const DEFAULT_CONFIG: TelegramConfig = {
-  botToken: '8830072583:AAEYhpGNTgD9AMR5hd5RC0eX3QlBi3is73c',
+  botToken: typeof process !== 'undefined' && process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN ? process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN : '',
   chatId: '',
 };
 
@@ -27,8 +27,9 @@ export function getTelegramConfig(): TelegramConfig {
   try {
     const savedToken = localStorage.getItem('nt_telegram_bot_token');
     const savedChatId = localStorage.getItem('nt_telegram_chat_id');
+    const envToken = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN || '' : '';
     return {
-      botToken: savedToken !== null && savedToken !== '' ? savedToken : DEFAULT_CONFIG.botToken,
+      botToken: savedToken !== null && savedToken !== '' ? savedToken : envToken,
       chatId: savedChatId !== null ? savedChatId : DEFAULT_CONFIG.chatId,
     };
   } catch {

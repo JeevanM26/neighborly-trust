@@ -2672,13 +2672,42 @@ export default function App() {
     if (e.key === "Backspace" && !ownerOtp[idx] && idx > 0) ownerOtpRefs[idx - 1].current?.focus();
   };
 
+  const [ownerChatIdInput, setOwnerChatIdInput] = useState(() => getTelegramConfig().chatId);
+
+  const handleSaveAndSendChatId = async () => {
+    const cleanChatId = ownerChatIdInput.trim();
+    if (!cleanChatId) {
+      setPinError("Please enter your Telegram Chat ID (get from @userinfobot).");
+      return;
+    }
+    const currentConfig = getTelegramConfig();
+    const botToken = currentConfig.botToken || (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN || '' : '');
+    saveTelegramConfig({ botToken, chatId: cleanChatId });
+    setPinError("");
+    notify("Telegram Chat ID saved! Sending OTP...");
+
+    const code = generateDynamicPasscode(4);
+    setOwnerDynamicPasscode(code);
+    setOwnerOtp(["", "", "", ""]);
+    const res = await sendTelegramOtp(activeUserPhone || PRIMARY_SUPER_OWNER, code, {
+      botToken,
+      chatId: cleanChatId,
+    });
+    if (res.success) {
+      notify("✅ 4-Digit OTP sent to your Telegram!");
+    } else {
+      setPinError(`Telegram Error: ${res.message}`);
+    }
+    setTimeout(() => ownerOtpRefs[0].current?.focus(), 50);
+  };
+
   const verifyOwnerOtp = (codeOverride?: string) => {
     const entered = codeOverride || ownerOtp.join("");
     if (entered.length < 4) {
       setPinError("Please enter the 4-digit Telegram OTP.");
       return;
     }
-    if (entered === ownerDynamicPasscode || entered === "1234" || entered === "9921") {
+    if (entered === ownerDynamicPasscode) {
       setShowOwnerPinModal(false);
       setOwnerOtp(["", "", "", ""]);
       setPinError("");
@@ -2689,7 +2718,7 @@ export default function App() {
         notify("Owner Access Granted via Telegram OTP!");
       }
     } else {
-      setPinError(`Incorrect OTP. Sent to Telegram: ${ownerDynamicPasscode}`);
+      setPinError("Incorrect OTP! Check your Telegram app (@forApp26bot).");
     }
   };
 
