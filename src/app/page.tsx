@@ -3122,14 +3122,14 @@ export default function App() {
                 Enter 4-digit Telegram OTP sent to <strong className="text-amber-300 font-mono">+91 {activeUserPhone || PRIMARY_SUPER_OWNER}</strong>
               </p>
 
-              {/* Telegram OTP Banner / Demo Indicator */}
-              <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-2.5 text-center space-y-1">
-                <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                  <span>TELEGRAM BOT OTP</span>
-                  <span className="text-emerald-400 font-bold animate-pulse">LIVE</span>
+              {/* Secure Telegram Status Indicator (Production Security) */}
+              <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-3 text-center space-y-1.5">
+                <div className="flex items-center justify-center gap-1.5 text-xs text-emerald-400 font-bold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>OTP Sent to Telegram (@forApp26bot)</span>
                 </div>
-                <p className="text-xl font-mono font-black tracking-widest text-amber-300">
-                  {ownerDynamicPasscode || "1234"}
+                <p className="text-[11px] text-slate-400 font-medium">
+                  Check your Telegram notification on your phone for your 4-digit security code.
                 </p>
               </div>
 
