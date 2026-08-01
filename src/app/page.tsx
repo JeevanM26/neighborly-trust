@@ -773,7 +773,7 @@ function DeveloperOwnerBoard({
 
 // ─── PHONE OTP LOGIN — Customer ───────────────────────────────────────────────
 function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner, voiceEnabled, onToggleVoice }: {
-  onLogin: () => void; goProvider: () => void; lang: string; setLang: (l: string) => void; notify: (m: string) => void; onOpenOwner: () => void; voiceEnabled: boolean; onToggleVoice: () => void;
+  onLogin: (phone?: string) => void; goProvider: () => void; lang: string; setLang: (l: string) => void; notify: (m: string) => void; onOpenOwner: () => void; voiceEnabled: boolean; onToggleVoice: () => void;
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -849,7 +849,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
     if (code !== generatedOtp && code !== "1234") { setError(`Incorrect OTP. Try ${generatedOtp}.`); return; }
     setError(""); setLoading(true);
     if (voiceEnabled) speakAudio(lang === "ಕನ್ನಡ" ? "ಲಾಗಿನ್." : "Login successful.", lang);
-    setTimeout(() => { setLoading(false); onLogin(); }, 400);
+    setTimeout(() => { setLoading(false); onLogin(phone); }, 400);
   };
 
   if (step === "otp") {
@@ -1052,7 +1052,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
 
 // ─── PHONE OTP LOGIN — Provider ───────────────────────────────────────────────
 function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner, voiceEnabled, onToggleVoice, lang }: {
-  onLogin: () => void; goCustomer: () => void; notify: (m: string) => void; onOpenOwner: () => void; voiceEnabled: boolean; onToggleVoice: () => void; lang: string;
+  onLogin: (phone?: string) => void; goCustomer: () => void; notify: (m: string) => void; onOpenOwner: () => void; voiceEnabled: boolean; onToggleVoice: () => void; lang: string;
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -1124,7 +1124,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner, voiceEnabled,
     if (code !== generatedOtp && code !== "1234") { setError(`Incorrect OTP. Try ${generatedOtp}.`); return; }
     setError(""); setLoading(true);
     if (voiceEnabled) speakAudio(lang === "ಕನ್ನಡ" || lang === "kn" ? "ಲಾಗಿನ್." : "Login successful.", lang);
-    setTimeout(() => { setLoading(false); onLogin(); }, 400);
+    setTimeout(() => { setLoading(false); onLogin(phone); }, 400);
   };
 
   if (step === "otp") {
@@ -2364,6 +2364,17 @@ export default function App() {
     );
   };
 
+  const handleUserLogin = (userPhone?: string, fallbackMode: "customer" | "provider" = "customer") => {
+    const clean = (userPhone || "").replace(/\D/g, "");
+    if (OWNER_PHONE_NUMBERS.includes(clean)) {
+      setMode("owner");
+      notify("Owner Authorized Access Granted — Welcome to System Controls!");
+    } else {
+      setMode(fallbackMode);
+      if (fallbackMode === "customer") setTab("find");
+    }
+  };
+
   const purgeStorage = () => {
     setBookings([]);
     setListings([]);
@@ -2415,7 +2426,7 @@ export default function App() {
       <CustomerLogin
         lang={lang}
         setLang={setLang}
-        onLogin={() => { setMode("customer"); setTab("find"); }}
+        onLogin={(phoneStr?: string) => handleUserLogin(phoneStr, "customer")}
         goProvider={() => setMode("provider-login")}
         notify={notify}
         onOpenOwner={() => setShowOwnerPinModal(true)}
@@ -2427,7 +2438,7 @@ export default function App() {
     screen = (
       <ProviderLogin
         lang={lang}
-        onLogin={() => setMode("provider")}
+        onLogin={(phoneStr?: string) => handleUserLogin(phoneStr, "provider")}
         goCustomer={() => setMode("login")}
         notify={notify}
         onOpenOwner={() => setShowOwnerPinModal(true)}
