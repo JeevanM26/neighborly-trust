@@ -47,14 +47,38 @@ export function saveTelegramConfig(config: TelegramConfig): void {
   }
 }
 
+export function getOwnerChatIds(): Record<string, string> {
+  if (typeof window === 'undefined') return { '7975182162': '7258080421' };
+  try {
+    const saved = localStorage.getItem('nt_owner_chat_ids');
+    return saved ? JSON.parse(saved) : { '7975182162': '7258080421' };
+  } catch {
+    return { '7975182162': '7258080421' };
+  }
+}
+
+export function saveOwnerChatId(phone: string, chatId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const cleanPhone = phone.replace(/\D/g, "");
+    const map = getOwnerChatIds();
+    map[cleanPhone] = chatId.trim();
+    localStorage.setItem('nt_owner_chat_ids', JSON.stringify(map));
+  } catch (e) {
+    console.error('Failed to save owner chat ID map', e);
+  }
+}
+
 export async function sendTelegramOtp(
   phone: string,
   passcode: string,
   customConfig?: TelegramConfig
 ): Promise<{ success: boolean; message: string }> {
   const config = customConfig || getTelegramConfig();
+  const cleanPhone = phone.replace(/\D/g, "");
+  const ownerChatIdsMap = getOwnerChatIds();
 
-  let targetChatId = config.chatId || '7258080421';
+  let targetChatId = customConfig?.chatId || ownerChatIdsMap[cleanPhone] || config.chatId || '7258080421';
   let botToken = config.botToken || (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN || '' : '');
 
   if (!targetChatId && botToken) {
@@ -65,7 +89,7 @@ export async function sendTelegramOtp(
         const lastMsg = updatesData.result[updatesData.result.length - 1]?.message;
         if (lastMsg?.chat?.id) {
           targetChatId = lastMsg.chat.id.toString();
-          saveTelegramConfig({ botToken, chatId: targetChatId });
+          saveOwnerChatId(cleanPhone, targetChatId);
         }
       }
     } catch {
