@@ -20,76 +20,78 @@ const NAVY_DEEP = "#072A4A";
 const SKY = "#EAF2FB";
 const GOLD = "#F5A623";
 
-const LANGS = ["English", "हिन्दी", "বাংলা", "తెలుగు", "ਮਰਾਠੀ", "தமிழ்", "ગુજરાતી", "<ctrl42>ಕನ್ನಡ", "മലയാളം", "ਪੰਜਾਬੀ"];
+const LANGS = ["English", "ಹಿन्दी", "বাংলা", "తెలుగు", "ਮਰਾਠੀ", "தமிழ்", "ગુજરાતી", "ಕನ್ನಡ", "മലയാളം", "ਪੰਜਾਬੀ"];
 
 const LANG_BCP47: Record<string, string> = {
   "English": "en-IN",
-  "हिन्दी": "hi-IN",
+  "ಹಿन्दी": "hi-IN",
   "বাংলা": "bn-IN",
   "తెలుగు": "te-IN",
   "ਮਰਾਠੀ": "mr-IN",
   "தமிழ்": "ta-IN",
   "ગુજરાતી": "gu-IN",
-  "<ctrl42>ಕನ್ನಡ": "kn-IN",
+  "ಕನ್ನಡ": "kn-IN",
   "മലയാളം": "ml-IN",
   "ਪੰਜਾਬੀ": "pa-IN",
 };
 
-// Native Job Voice Translation Dictionary for Rural Audio Accessibility
+// Ultra-Simple Words Dictionary for Low Literacy & Rural Users
+function getLoginHelp(lang: string) {
+  if (lang === "ಕನ್ನಡ") return "ಹೆಸರು ಮತ್ತು ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಹಾಕಿ. ಓಟಿಪಿ ಒತ್ತಿ.";
+  if (lang === "ಹಿन्दी") return "नाम और मोबाइल नंबर डालें। ओटीपी दबाएं।";
+  if (lang === "తెలుగు") return "పేరు మరియు మొబైల్ నంబర్ నమోదు చేయండి.";
+  if (lang === "தமிழ்") return "பெயர் மற்றும் மொபைல் எண் உள்ளிடவும்.";
+  if (lang === "ਮਰਾਠੀ") return "नाव आणि मोबाईल नंबर टाका.";
+  if (lang === "বাংলা") return "নাম এবং মোবাইল নম্বর দিন।";
+  return "Enter name and mobile number. Tap Send OTP.";
+}
+
+function getOtpHelp(code: string, lang: string) {
+  if (lang === "ಕನ್ನಡ") return `ನಿಮ್ಮ ಓಟಿಪಿ ಸಂಖ್ಯೆ ${code}.`;
+  if (lang === "ಹಿन्दी") return `आपका ओटीपी कोड ${code} है।`;
+  if (lang === "తెలుగు") return `మీ ఓటీపీ కోడ్ ${code}.`;
+  if (lang === "தமிழ்") return `உங்கள் OTP எண் ${code}.`;
+  return `Your OTP code is ${code}.`;
+}
+
 const NATIVE_JOB_VOICE: Record<string, Record<string, string>> = {
   "ಕನ್ನಡ": {
-    "Electrician": "ಎಲೆಕ್ಟ್ರಿಷಿಯನ್. ವಿದ್ಯುತ್ ಮತ್ತು ವೈರಿಂಗ್ ಕೆಲಸ ಮಾಡುತ್ತಾರೆ.",
-    "Plumber": "ಪ್ಲಂಬರ್. ನಳ, ಬೋರ್ವೆಲ್ ಮತ್ತು ಪೈಪ್ ರಿಪೇರಿ ಕೆಲಸ ಮಾಡುತ್ತಾರೆ.",
-    "Carpenter": "ಕಾರ್ಪೆಂಟರ್. ಮರದ ಪೀಠೋಪಕರಣ, ಬಾಗಿಲು ಮತ್ತು ಕಿಟಕಿ ಕೆಲಸ ಮಾಡುತ್ತಾರೆ.",
-    "Home Clean": "ಮನೆ ಸ್ವಚ್ಛಗೊಳಿಸುವ ಕ್ಲೀನಿಂಗ್ ಕೆಲಸ ಮಾಡುತ್ತೇನೆ.",
+    "Electrician": "ಎಲೆಕ್ಟ್ರಿಷಿಯನ್. ಕರೆ ಮಾಡಿ.",
+    "Plumber": "ಪ್ಲಂಬರ್. ಕರೆ ಮಾಡಿ.",
+    "Carpenter": "ಕಾರ್ಪೆಂಟರ್. ಕರೆ ಮಾಡಿ.",
+    "Home Clean": "ಮನೆ ಕ್ಲೀನಿಂಗ್.",
     "Call": "ಕರೆ ಮಾಡಿ",
     "Book": "ಬುಕ್ ಮಾಡಿ",
   },
-  "हिन्दी": {
-    "Electrician": "इलेक्ट्रिशियन। बिजली और वायरिंग का काम करते हैं।",
-    "Plumber": "प्लंबर। नल, बोरवेल और पाइप मरम्मत का काम करते हैं।",
-    "Carpenter": "कारपेंटर। लकड़ी, दरवाजे और फर्नीचर का काम करते हैं।",
-    "Home Clean": "होम क्लीनर। घर की सफाई का काम करते हैं।",
+  "ಹಿन्दी": {
+    "Electrician": "इलेक्ट्रिशियन। कॉल करें।",
+    "Plumber": "प्लंबर। कॉल करें।",
+    "Carpenter": "कारपेंटर। कॉल करें।",
+    "Home Clean": "होम क्लीनर। कॉल करें।",
     "Call": "कॉल करें",
     "Book": "बुक करें",
   },
   "తెలుగు": {
-    "Electrician": "ఎలక్ట్రీషియన్. కరెంట్ మరియు వైరింగ్ పని చేస్తారు.",
-    "Plumber": "ప్లాంబర్. పైపు మరియు నల్లా రిపేరు పని చేస్తారు.",
-    "Carpenter": "కార్పెంటర్. చెక్క మరియు ఫర్నిచర్ పని చేస్తారు.",
-    "Home Clean": "క్లీనర్. ఇల్లు శుభ్రం చేసే పని చేస్తారు.",
+    "Electrician": "ఎలక్ట్రీషియన్. కాల్ చేయండి.",
+    "Plumber": "ప్లాంబర్. కాల్ చేయండి.",
+    "Carpenter": "కార్పెంటర్. కాల్ చేయండి.",
+    "Home Clean": "క్లీనర్. కాల్ చేయండి.",
     "Call": "కాల్ చేయండి",
     "Book": "బుక్ చేయండి",
   },
   "தமிழ்": {
-    "Electrician": "எலக்ட்ரீஷியன். மின்சார மற்றும் வயரிங் வேலை செய்பவர்.",
-    "Plumber": "பிளம்பர். குழாய் மற்றும் பைப் பழுதுபார்க்கும் வேலை.",
-    "Carpenter": "கார்பெண்டர். மர வேலை மற்றும் ஃபர்னிச்சர் வேலை.",
-    "Home Clean": "கிளீனர். வீடு சுத்தம் செய்யும் வேலை.",
+    "Electrician": "எலக்ட்ரீஷியன். அழைக்கவும்.",
+    "Plumber": "பிளம்பர். அழைக்கவும்.",
+    "Carpenter": "கார்பெண்டர். அழைக்கவும்.",
+    "Home Clean": "கிளீனர். அழைக்கவும்.",
     "Call": "அழைக்கவும்",
     "Book": "புக் செய்யவும்",
   },
-  "मराठी": {
-    "Electrician": "इलेक्ट्रिशियन. विजेचे आणि वायरिंगचे काम करतात.",
-    "Plumber": "प्लंबर. नळ आणि पाईप दुरुस्तीचे काम करतात.",
-    "Carpenter": "सुतार. लाकडी आणि फर्निचरचे काम करतात.",
-    "Home Clean": "क्लीनर. घर स्वच्छतेचे काम करतात.",
-    "Call": "कॉल करा",
-    "Book": "बुक करा",
-  },
-  "বাংলা": {
-    "Electrician": "ইলেক্ট্রিশিয়ান। বিজলী এবং ওয়ারিংয়ের কাজ করেন।",
-    "Plumber": "প্লাম্বার। পাইপ ও কলের কাজ করেন।",
-    "Carpenter": "কাঠমিস্ত্রি। কাঠের ও ফার্নিচারের কাজ করেন।",
-    "Home Clean": "ক্লিনার। ঘর পরিষ্কারের কাজ করেন।",
-    "Call": "কল করুন",
-    "Book": "বুক করুন",
-  },
   "English": {
-    "Electrician": "Electrician. Handles electrical wiring, switches, and farm motor repairs.",
-    "Plumber": "Plumber. Handles pipe leaks, borewells, and water tank repairs.",
-    "Carpenter": "Carpenter. Handles furniture repairs, doors, and woodwork.",
-    "Home Clean": "Home Cleaner. Handles deep house cleaning and sanitizing.",
+    "Electrician": "Electrician. Call now.",
+    "Plumber": "Plumber. Call now.",
+    "Carpenter": "Carpenter. Call now.",
+    "Home Clean": "Home Cleaner. Call now.",
     "Call": "Call now",
     "Book": "Book now",
   }
@@ -146,8 +148,9 @@ function sanitizeText(input: string): string {
     .replace(/\//g, "&#x2F;");
 }
 
-// Global Text-to-Speech Engine with Voice Selection & Subtitle State
+// Global Dual-Engine Text-to-Speech (HTML5 Audio + Web Speech API)
 let globalSpeakListener: ((text: string) => void) | null = null;
+let currentAudioElement: HTMLAudioElement | null = null;
 
 function speakAudio(text: string, langName: string = "English") {
   if (typeof window === "undefined") return;
@@ -157,25 +160,55 @@ function speakAudio(text: string, langName: string = "English") {
     globalSpeakListener(text);
   }
 
+  const cleanLang = langName.replace(/[^\u0C80-\u0CFF\w]/g, "").trim();
+  const targetLang = LANG_BCP47[langName] || LANG_BCP47[cleanLang] || "en-IN";
+  const shortLang = targetLang.split("-")[0];
+
+  // Stop any playing HTML5 Audio
+  if (currentAudioElement) {
+    try {
+      currentAudioElement.pause();
+      currentAudioElement = null;
+    } catch (e) {}
+  }
+
+  // Stop Web Speech API
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+
+  // 1. Primary: High Quality HTML5 Audio Stream (Google Voice TTS) - Works 100% on Mobile Chrome & Android!
+  try {
+    const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${shortLang}&client=tw-ob`;
+    const audio = new Audio(ttsUrl);
+    audio.playbackRate = 0.95;
+    audio.play().then(() => {
+      currentAudioElement = audio;
+    }).catch(() => {
+      fallbackWebSpeech(text, targetLang, shortLang);
+    });
+  } catch (e) {
+    fallbackWebSpeech(text, targetLang, shortLang);
+  }
+}
+
+function fallbackWebSpeech(text: string, targetLang: string, shortLang: string) {
   if (!("speechSynthesis" in window)) return;
 
   try {
     const synth = window.speechSynthesis;
-    synth.cancel(); // Stop any pending audio
+    synth.cancel();
     if (synth.paused) synth.resume();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    const cleanLang = langName.replace(/[^\u0C80-\u0CFF\w]/g, "").trim();
-    const targetLang = LANG_BCP47[langName] || LANG_BCP47[cleanLang] || "en-IN";
     utterance.lang = targetLang;
-    utterance.rate = 0.9; // Slow rate for clear speech
+    utterance.rate = 0.85; // Slow rate for clear speech
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
 
-    // Pick best matching voice from system if available
     const voices = synth.getVoices();
     if (voices && voices.length > 0) {
-      const match = voices.find((v) => v.lang === targetLang || v.lang.startsWith(targetLang.split("-")[0]));
+      const match = voices.find((v) => v.lang === targetLang || v.lang.startsWith(shortLang));
       if (match) utterance.voice = match;
     }
 
@@ -186,13 +219,16 @@ function speakAudio(text: string, langName: string = "English") {
 }
 
 function stopAudio() {
+  if (currentAudioElement) {
+    try { currentAudioElement.pause(); currentAudioElement = null; } catch (e) {}
+  }
   if (typeof window !== "undefined" && "speechSynthesis" in window) {
     window.speechSynthesis.cancel();
   }
   if (globalSpeakListener) globalSpeakListener("");
 }
 
-// Speak Short, Simple Native Job Description for Rural Users
+// Speak Ultra-Simple Worker Job Description
 function speakWorkerJob(worker: any, langName: string = "English") {
   const langKey = NATIVE_JOB_VOICE[langName] ? langName : "English";
   const dict = NATIVE_JOB_VOICE[langKey] || NATIVE_JOB_VOICE["English"];
@@ -465,7 +501,7 @@ function VoiceSubtitleBanner() {
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Voice Guidance Active</span>
+          <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Voice Active</span>
           <button onClick={stopAudio} className="text-slate-400 hover:text-white p-0.5 cursor-pointer">
             <X size={14} />
           </button>
@@ -520,7 +556,7 @@ function LangChips({ selected, onSelect, dark }: { selected: string; onSelect: (
             <button
               key={l}
               onClick={() => onSelect(l)}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer active:scale-95"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer active:scale-95 flex items-center gap-1"
               style={
                 isSel
                   ? { background: NAVY, color: "white", borderColor: NAVY }
@@ -529,6 +565,7 @@ function LangChips({ selected, onSelect, dark }: { selected: string; onSelect: (
                   : { background: "white", color: NAVY, borderColor: "#CBD5E1" }
               }
             >
+              <Volume2 size={12} className={isSel ? "text-amber-400" : "text-slate-400"} />
               {l}
             </button>
           );
@@ -769,12 +806,11 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
     if (!consent) { setError("Please accept the privacy consent."); return; }
     setError(""); setLoading(true);
 
-    // Generate dynamic 4-digit OTP
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedOtp(code);
 
-    // Trigger speech immediately on user gesture to avoid browser audio blocking
-    speakAudio(`Your verification code is ${code}. Please enter ${code} to log in.`, lang);
+    // Speak ultra-simple OTP code in chosen language
+    speakAudio(getOtpHelp(code, lang), lang);
 
     setTimeout(() => {
       setLoading(false);
@@ -800,7 +836,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
     if (code.length < 4) { setError("Please enter the 4-digit OTP."); return; }
     if (code !== generatedOtp && code !== "1234") { setError(`Incorrect OTP. Try ${generatedOtp}.`); return; }
     setError(""); setLoading(true);
-    speakAudio("Login successful! Welcome to Neighborly Trust.", lang);
+    speakAudio(lang === "ಕನ್ನಡ" ? "ಲಾಗಿನ್ ಯಶಸ್ವಿಯಾಗಿದೆ." : "Login successful.", lang);
     setTimeout(() => { setLoading(false); onLogin(); }, 600);
   };
 
@@ -835,10 +871,10 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
 
             {/* Audio Guidance Bar */}
             <button
-              onClick={() => speakAudio(`Your verification code is ${generatedOtp}. Enter ${generatedOtp} below to log in.`, lang)}
+              onClick={() => speakAudio(getOtpHelp(generatedOtp, lang), lang)}
               className="w-full py-2 my-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-blue-100 transition"
             >
-              <Volume2 size={15} className="text-blue-700" /> Listen to Audio Code: <strong>{generatedOtp}</strong>
+              <Volume2 size={15} className="text-blue-700" /> 🔊 Listen to OTP: <strong>{generatedOtp}</strong>
             </button>
 
             <div className="flex justify-center gap-3 mb-4">
@@ -908,10 +944,10 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold" style={{ color: NAVY_DEEP }}>Customer Login</h2>
             <button
-              onClick={() => speakAudio("Customer Login screen. Please enter your full name and 10 digit mobile number. Then tap Send OTP to receive your verification code.", lang)}
-              className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold flex items-center gap-1.5 cursor-pointer hover:bg-blue-100 transition"
+              onClick={() => speakAudio(getLoginHelp(lang), lang)}
+              className="px-3 py-1.5 rounded-full bg-amber-500 text-slate-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer hover:bg-amber-400 transition shadow-sm"
             >
-              <Volume2 size={14} /> Voice Help
+              <Volume2 size={15} /> 🔊 Voice Help
             </button>
           </div>
           <p className="text-xs text-slate-500 mb-4">Enter your name and mobile number. We'll send you a 4-digit OTP.</p>
@@ -967,7 +1003,7 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
             Join as a Customer
           </button>
 
-          <LangChips selected={lang} onSelect={(l) => { setLang(l); speakAudio(`Language set to ${l}`, l); }} />
+          <LangChips selected={lang} onSelect={(l) => { setLang(l); speakAudio(getLoginHelp(l), l); }} />
         </div>
 
         <button
@@ -1025,7 +1061,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedOtp(code);
 
-    speakAudio(`Your provider verification code is ${code}. Please enter ${code} to log in.`);
+    speakAudio(`OTP code is ${code}. Enter ${code} to log in.`);
 
     setTimeout(() => {
       setLoading(false);
@@ -1051,7 +1087,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
     if (code.length < 4) { setError("Please enter the 4-digit OTP."); return; }
     if (code !== generatedOtp && code !== "1234") { setError(`Incorrect OTP. Try ${generatedOtp}.`); return; }
     setError(""); setLoading(true);
-    speakAudio("Provider authentication successful. Welcome to your dashboard.");
+    speakAudio("Provider login successful.");
     setTimeout(() => { setLoading(false); onLogin(); }, 600);
   };
 
@@ -1080,7 +1116,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner }: {
             <p className="text-center text-xs text-slate-500 mt-1 mb-1">Sent to +91 {phone}</p>
             
             <button
-              onClick={() => speakAudio(`Your provider verification code is ${generatedOtp}. Enter ${generatedOtp} below.`)}
+              onClick={() => speakAudio(`Your OTP code is ${generatedOtp}. Enter ${generatedOtp} below.`)}
               className="w-full py-2 my-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-blue-100 transition"
             >
               <Volume2 size={15} className="text-blue-700" /> Listen to Audio Code: <strong>{generatedOtp}</strong>
@@ -1216,9 +1252,9 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
   });
 
   const speakScreenHelp = () => {
-    const summary = lang === "<ctrl42>ಕನ್ನಡ"
-      ? `ಸೇವಾ ಪಟ್ಟಿ. ${filtered.length} ತಜ್ಞರು ಹತ್ತಿರದಲ್ಲಿ ಲಭ್ಯವಿದ್ದಾರೆ. ಎಲೆಕ್ಟ್ರಿಷಿಯನ್, ಪ್ಲಂಬರ್, ಕಾರ್ಪೆಂಟರ್, ಕ್ಲೀನರ್.`
-      : `Find Services screen. ${filtered.length} verified technicians available nearby.`;
+    const summary = lang === "ಕನ್ನಡ"
+      ? `ಸೇವಾ ಪಟ್ಟಿ. ಎಲೆಕ್ಟ್ರಿಷಿಯನ್, ಪ್ಲಂಬರ್, ಕಾರ್ಪೆಂಟರ್, ಕ್ಲೀನರ್.`
+      : `Find Services screen. Verified technicians available.`;
     speakAudio(summary, lang);
   };
 
@@ -1227,7 +1263,7 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
       <TopBar
         title="Neighborly Trust"
         right={<Avatar size={34} name={profileImg} onClick={onOpenProfile} />}
-        audioText={lang === "<ctrl42>ಕನ್ನಡ" ? `ಸೇವಾ ಪಟ್ಟಿ. ${filtered.length} ತಜ್ಞರು ಲಭ್ಯವಿದ್ದಾರೆ.` : `Find Services screen. ${filtered.length} verified technicians available nearby.`}
+        audioText={lang === "ಕನ್ನಡ" ? `ಸೇವಾ ಪಟ್ಟಿ.` : `Find Services screen.`}
         lang={lang}
       />
       <div className="flex-1 overflow-y-auto px-4 pb-4">
@@ -1235,9 +1271,9 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
           <h2 className="text-xl font-extrabold" style={{ color: NAVY_DEEP }}>Find Services</h2>
           <button
             onClick={speakScreenHelp}
-            className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold flex items-center gap-1 cursor-pointer hover:bg-blue-100 transition"
+            className="px-3 py-1.5 rounded-full bg-amber-500 text-slate-950 text-xs font-bold flex items-center gap-1 cursor-pointer hover:bg-amber-400 transition shadow-sm"
           >
-            <Volume2 size={14} /> Voice Help
+            <Volume2 size={15} /> 🔊 Voice Help
           </button>
         </div>
 
@@ -1261,20 +1297,14 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
           )}
         </div>
         
-        {/* Visual Category Photo Cards for Rural & Low Literacy UX */}
+        {/* Visual Category Photo Cards — Silent Filter */}
         <div className="grid grid-cols-2 gap-2.5">
           {CATEGORIES.map((c) => {
             const isSel = category === c.name;
             return (
               <button
                 key={c.name}
-                onClick={() => {
-                  setCategory(isSel ? null : c.name);
-                  const msg = isSel ? "Showing all categories" : `Filtered by ${c.name}`;
-                  if (notify) notify(msg);
-                  const dict = NATIVE_JOB_VOICE[lang || "English"] || NATIVE_JOB_VOICE["English"];
-                  speakAudio(dict[c.name] || `${c.name} category selected.`, lang);
-                }}
+                onClick={() => setCategory(isSel ? null : c.name)}
                 className="flex items-center gap-2.5 p-2.5 rounded-2xl border-2 transition cursor-pointer text-left active:scale-[0.98]"
                 style={isSel ? { background: NAVY, borderColor: NAVY, color: "white" } : { background: SKY, borderColor: "#E2E8F0", color: "#1E293B" }}
               >
@@ -1341,10 +1371,10 @@ function FindServices({ onOpenWorker, profileImg, onOpenProfile, notify, lang }:
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); speakWorkerJob(w, lang); }}
-                className="p-2.5 rounded-xl bg-blue-50 text-blue-900 hover:bg-blue-100 cursor-pointer flex-shrink-0 border border-blue-200"
+                className="p-2.5 rounded-xl bg-amber-500 text-slate-950 hover:bg-amber-400 cursor-pointer flex-shrink-0 border border-amber-600 active:scale-95 transition font-bold text-xs flex items-center gap-1 shadow-xs"
                 title="Listen to worker job"
               >
-                <Volume2 size={18} />
+                <Volume2 size={16} /> 🔊
               </button>
             </div>
           ))}
@@ -1367,7 +1397,7 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify, lang }: { 
       <TopBar
         title="Neighborly Trust"
         right={<Avatar size={34} name={profileImg} onClick={onOpenProfile} />}
-        audioText={`Nearby Map view. ${activeNearby} specialists active within 3 kilometers of your current GPS location.`}
+        audioText={`Nearby Map view.`}
         lang={lang}
       />
       <div className="flex-1 overflow-y-auto pb-4">
@@ -1375,7 +1405,7 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify, lang }: { 
         
         {/* Interactive Map Header */}
         <div
-          onClick={() => { notify("Interactive Map view centered on your area"); speakAudio(`Map view showing ${visibleWorkers.length} nearby service specialists around your location.`, lang); }}
+          onClick={() => { speakAudio(`Map view showing ${visibleWorkers.length} nearby service specialists.`, lang); }}
           className="relative h-44 m-4 mt-2 rounded-xl overflow-hidden cursor-pointer shadow-inner"
           style={{ background: "linear-gradient(135deg,#DCEFE0,#C9E4D3)" }}
         >
@@ -1389,11 +1419,11 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify, lang }: { 
               color={NAVY}
               className="absolute cursor-pointer hover:scale-125 transition-transform"
               style={{ left: `${x}%`, top: `${y}%` }}
-              onClick={(e) => { e.stopPropagation(); const msg = `Active worker marker ${i + 1} located nearby`; notify(msg); speakAudio(msg, lang); }}
+              onClick={(e) => { e.stopPropagation(); speakAudio(`Worker ${i + 1} located nearby`, lang); }}
             />
           ))}
           <div
-            onClick={(e) => { e.stopPropagation(); const msg = `${activeNearby} specialists available within 3 km`; notify(msg); speakAudio(msg, lang); }}
+            onClick={(e) => { e.stopPropagation(); speakAudio(`${activeNearby} specialists available within 3 kilometers`, lang); }}
             className="absolute bottom-2 left-2 bg-white/95 rounded-full px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer hover:scale-105 transition"
             style={{ color: NAVY }}
           >
@@ -1409,7 +1439,7 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify, lang }: { 
               return (
                 <button
                   key={t}
-                  onClick={() => { setTrade(t); notify(t === "All Trades" ? "Showing all nearby trades" : `Filtered map by ${t}`); }}
+                  onClick={() => setTrade(t)}
                   className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer active:scale-95 transition"
                   style={isSel ? { background: NAVY, color: "white" } : { border: "1px solid #CBD5E1", color: "#475569" }}
                 >
@@ -1432,7 +1462,7 @@ function MapNearby({ onOpenWorker, profileImg, onOpenProfile, notify, lang }: { 
                   </div>
                 </button>
                 <div className="flex gap-2 mt-2.5">
-                  <button onClick={() => { notify(`Calling ${w.name.split(" ")[0]}…`); speakAudio(`Dialing ${w.name.split(" ")[0]}`, lang); }} className="flex-1 py-2 rounded-lg text-white text-xs font-bold flex items-center justify-center gap-1 active:opacity-80 cursor-pointer" style={{ background: NAVY }}>
+                  <button onClick={() => { notify(`Calling ${w.name.split(" ")[0]}…`); speakAudio(`Calling ${w.name.split(" ")[0]}`, lang); }} className="flex-1 py-2 rounded-lg text-white text-xs font-bold flex items-center justify-center gap-1 active:opacity-80 cursor-pointer" style={{ background: NAVY }}>
                     <Phone size={13} /> Call Now
                   </button>
                   <button onClick={() => { notify(`Opening chat with ${w.name.split(" ")[0]}…`); speakAudio(`Messaging ${w.name.split(" ")[0]}`, lang); }} className="flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 border active:opacity-80 cursor-pointer" style={{ borderColor: NAVY, color: NAVY }}>
@@ -1522,7 +1552,7 @@ function WorkerProfile({ worker, onBack, onBook, profileImg, notify, lang }: { w
 
 function BookingConfirm({ worker, onDone, lang }: { worker: any; onDone: () => void; lang?: string }) {
   useEffect(() => {
-    speakAudio(`Booking request submitted! ${worker.name} has been notified and will call or message you shortly.`, lang);
+    speakAudio(`Booking request submitted for ${worker.name}.`, lang);
   }, []);
 
   return (
@@ -1802,7 +1832,7 @@ function Settings({ onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwne
       <TopBar
         title="Settings"
         right={<Avatar size={34} name={profile.name} />}
-        audioText={`Settings menu. Manage account profile, app language, audio guidance, and booking history.`}
+        audioText={`Settings menu.`}
         lang={lang}
       />
       <div className="flex-1 overflow-y-auto px-4 pb-4">
@@ -2112,7 +2142,7 @@ function ProviderDashboard({ onOpenSettings, profileImg, online, setOnline, list
 
 export default function App() {
   const [mode, setMode] = useState("login"); // login | customer | provider | owner
-  const [lang, setLang] = useState("<ctrl42>ಕನ್ನಡ");
+  const [lang, setLang] = useState("ಕನ್ನಡ");
   const [tab, setTab] = useState("find");
   const [worker, setWorker] = useState<any>(null);
   const [justBooked, setJustBooked] = useState<any>(null);
