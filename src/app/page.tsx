@@ -871,8 +871,8 @@ function DeveloperOwnerBoard({
 /* ---------- screens ---------- */
 
 // ─── PHONE OTP LOGIN — Customer ───────────────────────────────────────────────
-function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner, voiceEnabled, onToggleVoice }: {
-  onLogin: (phone?: string) => void; goProvider: () => void; lang: string; setLang: (l: string) => void; notify: (m: string) => void; onOpenOwner: () => void; voiceEnabled: boolean; onToggleVoice: () => void;
+function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, voiceEnabled, onToggleVoice }: {
+  onLogin: (phone?: string) => void; goProvider: () => void; lang: string; setLang: (l: string) => void; notify: (m: string) => void; voiceEnabled: boolean; onToggleVoice: () => void;
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -882,7 +882,6 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(0);
-  const [clickCount, setClickCount] = useState(0);
   const [generatedOtp, setGeneratedOtp] = useState("1234");
   const otpRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
@@ -892,23 +891,8 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
     return () => clearTimeout(t);
   }, [countdown]);
 
-  const triggerOwnerCheck = () => {
-    const next = clickCount + 1;
-    setClickCount(next);
-    if (next >= 3) {
-      setClickCount(0);
-      onOpenOwner();
-    }
-  };
-
   const sendOTP = () => {
     const cleanPhone = phone.replace(/\D/g, "");
-    if (OWNER_PHONE_NUMBERS.includes(cleanPhone) || cleanPhone === PRIMARY_SUPER_OWNER) {
-      notify(`Designated Owner Recognized (${cleanPhone}). Opening 2-Step Owner Verification...`);
-      onOpenOwner();
-      return;
-    }
-
     const sanitizedName = sanitizeText(name.trim());
     if (!sanitizedName) { setError("Please enter your full name."); return; }
     if (!/^[6-9]\d{9}$/.test(cleanPhone)) { setError("Please enter a valid 10-digit mobile number."); return; }
@@ -966,10 +950,10 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
         </div>
         <div className="px-6 pb-8">
           <div className="flex flex-col items-center mb-6">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3 shadow-lg border-2 border-slate-900 cursor-pointer" style={{ background: NAVY }} onClick={triggerOwnerCheck}>
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3 shadow-lg border-2 border-slate-900" style={{ background: NAVY }}>
               <HomeIcon color="white" size={30} />
             </div>
-            <h1 className="text-2xl font-black tracking-tight cursor-pointer" style={{ color: NAVY }} onClick={triggerOwnerCheck}>Neighborly Trust</h1>
+            <h1 className="text-2xl font-black tracking-tight" style={{ color: NAVY }}>Neighborly Trust</h1>
             <p className="text-slate-600 font-semibold text-sm mt-0.5">Local reliability you can count on.</p>
           </div>
 
@@ -1046,10 +1030,10 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
 
       <div className="px-6 pb-8">
         <div className="flex flex-col items-center mb-6">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3 shadow-lg border-2 border-slate-900 cursor-pointer" style={{ background: NAVY }} onClick={triggerOwnerCheck}>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3 shadow-lg border-2 border-slate-900" style={{ background: NAVY }}>
             <HomeIcon color="white" size={30} />
           </div>
-          <h1 className="text-2xl font-black tracking-tight cursor-pointer" style={{ color: NAVY }} onClick={triggerOwnerCheck}>Neighborly Trust</h1>
+          <h1 className="text-2xl font-black tracking-tight" style={{ color: NAVY }}>Neighborly Trust</h1>
           <p className="text-slate-600 font-semibold text-sm mt-0.5">Local reliability you can count on.</p>
         </div>
 
@@ -1141,8 +1125,8 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
           <Wrench size={16} /> Join as a Service Provider
         </button>
 
-        <p className="text-center text-[11px] text-slate-500 font-bold mt-6 cursor-pointer" onClick={triggerOwnerCheck}>
-          © 2024 Neighborly Trust Inc. • Tap for Owner Portal
+        <p className="text-center text-[11px] text-slate-500 font-bold mt-6">
+          © 2024 Neighborly Trust Inc. All rights reserved.
         </p>
       </div>
     </div>
@@ -1150,8 +1134,8 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
 }
 
 // ─── PHONE OTP LOGIN — Provider ───────────────────────────────────────────────
-function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner, voiceEnabled, onToggleVoice, lang }: {
-  onLogin: (phone?: string) => void; goCustomer: () => void; notify: (m: string) => void; onOpenOwner: () => void; voiceEnabled: boolean; onToggleVoice: () => void; lang: string;
+function ProviderLogin({ onLogin, goCustomer, notify, voiceEnabled, onToggleVoice, lang }: {
+  onLogin: (phone?: string) => void; goCustomer: () => void; notify: (m: string) => void; voiceEnabled: boolean; onToggleVoice: () => void; lang: string;
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -1160,7 +1144,6 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner, voiceEnabled,
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(0);
-  const [clickCount, setClickCount] = useState(0);
   const [generatedOtp, setGeneratedOtp] = useState("1234");
   const otpRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
@@ -1170,23 +1153,8 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner, voiceEnabled,
     return () => clearTimeout(t);
   }, [countdown]);
 
-  const triggerOwnerCheck = () => {
-    const next = clickCount + 1;
-    setClickCount(next);
-    if (next >= 3) {
-      setClickCount(0);
-      onOpenOwner();
-    }
-  };
-
   const sendOTP = () => {
     const cleanPhone = phone.replace(/\D/g, "");
-    if (OWNER_PHONE_NUMBERS.includes(cleanPhone) || cleanPhone === PRIMARY_SUPER_OWNER) {
-      notify(`Designated Owner Recognized (${cleanPhone}). Opening 2-Step Owner Verification...`);
-      onOpenOwner();
-      return;
-    }
-
     const sanitizedName = sanitizeText(name.trim());
     if (!sanitizedName) { setError("Please enter your full name."); return; }
     if (!/^[6-9]\d{9}$/.test(cleanPhone)) { setError("Please enter a valid 10-digit mobile number."); return; }
@@ -1237,7 +1205,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner, voiceEnabled,
         </div>
         <div className="px-6 pb-8">
           <div className="flex flex-col items-center mb-6">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={triggerOwnerCheck}>
+            <div className="flex items-center gap-2">
               <ShieldCheck color={NAVY} size={26} />
               <h1 className="text-xl font-black" style={{ color: NAVY }}>Neighborly Trust</h1>
             </div>
@@ -1315,7 +1283,7 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner, voiceEnabled,
 
       <div className="px-6 pb-8">
         <div className="flex flex-col items-center mb-6">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={triggerOwnerCheck}>
+          <div className="flex items-center gap-2">
             <ShieldCheck color={NAVY} size={26} />
             <h1 className="text-xl font-black" style={{ color: NAVY }}>Neighborly Trust</h1>
           </div>
@@ -1367,8 +1335,8 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner, voiceEnabled,
             📞 Need help? <a href="tel:18008787289" className="underline font-bold" style={{ color: NAVY }}>Call 1-800-TRUST-AZURE</a>
           </p>
         </div>
-        <p className="text-center text-[11px] text-slate-500 font-bold mt-6 cursor-pointer" onClick={triggerOwnerCheck}>
-          © 2024 Neighborly Trust Inc. • Tap for Owner Portal
+        <p className="text-center text-[11px] text-slate-500 font-bold mt-6">
+          © 2024 Neighborly Trust Inc. All rights reserved.
         </p>
       </div>
     </div>
@@ -1957,108 +1925,183 @@ function NotificationsScreen({ onBack, notify }: { onBack: () => void; notify?: 
 }
 
 function Settings({
-  onLogout, profile, onSaveProfile, onOpenBookings, onOpenOwner, notify, lang, onSetLang, voiceEnabled, onToggleVoice
+  onLogout, profile, onSaveProfile, onOpenBookings, notify, lang, onSetLang, voiceEnabled, onToggleVoice
 }: {
-  onLogout: () => void; profile: any; onSaveProfile: (p: any) => void; onOpenBookings: () => void; onOpenOwner: () => void; notify?: (m: string) => void; lang?: string; onSetLang: (l: string) => void; voiceEnabled: boolean; onToggleVoice: () => void;
+  onLogout: () => void; profile: any; onSaveProfile: (p: any) => void; onOpenBookings?: () => void; notify?: (m: string) => void; lang?: string; onSetLang: (l: string) => void; voiceEnabled: boolean; onToggleVoice: () => void;
 }) {
   const [view, setView] = useState("main");
   const [sound, setSound] = useState(true);
-  const [clickCount, setClickCount] = useState(0);
-
-  const triggerOwnerCheck = () => {
-    const next = clickCount + 1;
-    setClickCount(next);
-    if (next >= 3) {
-      setClickCount(0);
-      onOpenOwner();
-    }
-  };
-
-  const Toggle = ({ on, set, label }: { on: boolean; set: (v: boolean) => void; label: string }) => (
-    <div
-      onClick={(e) => { e.stopPropagation(); const next = !on; set(next); if (notify) notify(`${label} turned ${next ? 'ON' : 'OFF'}`); }}
-      className="w-12 h-7 rounded-full flex items-center px-0.5 cursor-pointer transition border border-slate-300"
-      style={{ background: on ? NAVY : "#E2E8F0", justifyContent: on ? "flex-end" : "flex-start" }}
-    >
-      <span className="w-6 h-6 bg-white rounded-full shadow-md" />
-    </div>
-  );
-
-  const Row = ({ icon: Icon, title, sub, right, onClick }: { icon: React.ElementType; title: string; sub: string; right?: React.ReactNode; onClick?: () => void }) => (
-    <div
-      onClick={onClick}
-      className={`w-full flex items-center gap-3 py-3 text-left ${onClick ? 'cursor-pointer hover:bg-slate-50 active:bg-slate-100 rounded-xl px-1 transition' : ''}`}
-    >
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border border-blue-900 shadow-xs" style={{ background: NAVY }}>
-        <Icon size={18} color="white" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-extrabold text-sm text-slate-900">{title}</p>
-        <p className="text-xs font-semibold text-slate-500">{sub}</p>
-      </div>
-      {right}
-    </div>
-  );
-
-  const Section = ({ title }: { title: string }) => <p className="text-xs font-black text-slate-500 mt-5 mb-1 tracking-wider uppercase">{title}</p>;
 
   if (view === "profile") return <ProfileEditScreen onBack={() => setView("main")} profile={profile} onSave={onSaveProfile} />;
-  if (view === "language") {
-    return (
-      <LanguageScreen
-        onBack={() => setView("main")}
-        selected={lang || "English"}
-        onSelect={(l) => {
-          onSetLang(l);
-          setView("main");
-          if (notify) notify(`Language set to ${l}`);
-          if (voiceEnabled) speakAudio(getLoginHelp(l), l);
-        }}
-      />
-    );
-  }
   if (view === "notifications") return <NotificationsScreen onBack={() => setView("main")} notify={notify} />;
 
+  const currentLang = lang || "English";
+
+  const languagesList = [
+    { name: "English", label: "English" },
+    { name: "ಕನ್ನಡ", label: "Kannada" },
+    { name: "हिंदी", label: "Hindi" },
+    { name: "தமிழ்", label: "Tamil" },
+    { name: "తెలుగు", label: "Telugu" },
+    { name: "मराठी", label: "Marathi" },
+    { name: "বাংলা", label: "Bengali" },
+    { name: "ગુજરાતી", label: "Gujarati" },
+    { name: "മലയാളം", label: "Malayalam" },
+    { name: "ਪੰਜਾਬੀ", label: "Punjabi" },
+  ];
+
   return (
-    <div className="h-full flex flex-col bg-white">
-      <TopBar
-        title="Settings"
-        right={<Avatar size={34} name={profile.name} />}
-        audioText={`Settings menu.`}
-        lang={lang}
-        voiceEnabled={voiceEnabled}
-        onToggleVoice={onToggleVoice}
-      />
-      <div className="flex-1 overflow-y-auto px-4 pb-4">
-        <Section title="ACCOUNT" />
-        <Row icon={User} title="Profile Edit" sub="Update your details & identity" onClick={() => setView("profile")} right={<span className="text-slate-400 font-bold">›</span>} />
-        <div className="h-px bg-slate-200" />
-        <Row icon={Globe} title="Language Preference" sub="English, Hindi, Marathi, & more" onClick={() => setView("language")} right={<span className="text-xs font-extrabold text-slate-600">{lang || "English"} ›</span>} />
+    <div className="h-full flex flex-col bg-slate-50/50">
+      {/* Top Header matching screenshot */}
+      <div className="px-4 py-3 bg-white border-b border-slate-100 flex items-center justify-between shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center border border-blue-900 shadow-xs" style={{ background: NAVY }}>
+            <ShieldCheck size={20} color="white" />
+          </div>
+          <div>
+            <h1 className="text-base font-black tracking-tight leading-tight" style={{ color: NAVY }}>Neighborly Trust</h1>
+            <p className="text-[10px] font-bold text-slate-500 leading-none mt-0.5">Local reliability you can count on.</p>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            const nextIdx = (languagesList.findIndex(l => l.name === currentLang || l.label === currentLang) + 1) % languagesList.length;
+            const nextL = languagesList[nextIdx].name;
+            onSetLang(nextL);
+            if (notify) notify(`Language set to ${nextL}`);
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-xs font-bold shadow-xs hover:bg-blue-900 transition cursor-pointer"
+          style={{ background: NAVY }}
+        >
+          <span>{currentLang}</span>
+          <Globe size={14} />
+        </button>
+      </div>
 
-        <Section title="AUDIO & ACCESSIBILITY" />
-        <Row icon={Volume2} title="App Sounds" sub="Feedback for clicks and actions" onClick={() => { const next = !sound; setSound(next); if (notify) notify(`App Sounds turned ${next ? 'ON' : 'OFF'}`); }} right={<Toggle on={sound} set={setSound} label="App Sounds" />} />
-        <div className="h-px bg-slate-200" />
-        <Row icon={Mic} title="Voice Guidance Mode" sub="Show orange speaker buttons for low literacy" onClick={onToggleVoice} right={<Toggle on={voiceEnabled} set={onToggleVoice} label="Voice Guidance" />} />
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Settings & Accessibility Title */}
+        <div>
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">Settings & Accessibility</h2>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">Manage account, language, audio and accessibility</p>
+        </div>
 
-        <Section title="PREFERENCES" />
-        <Row icon={Bell} title="Notifications" sub="Alerts, SMS, and Email" onClick={() => setView("notifications")} right={<span className="text-slate-400 font-bold">›</span>} />
+        {/* Profile Card */}
+        <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden font-black text-white text-lg shadow-inner" style={{ background: NAVY }}>
+              {profile.name ? profile.name.charAt(0).toUpperCase() : "A"}
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-sm">{profile.name || "Anand Sharma"}</h3>
+              <p className="text-xs font-semibold text-slate-500">{profile.phone || "+91 98765 43210"}</p>
+              <span className="inline-block mt-1 text-[10px] bg-blue-100 text-blue-900 font-extrabold px-2.5 py-0.5 rounded-full">
+                Role: {profile.role || "Customer"}
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => setView("profile")}
+            className="text-xs font-black text-blue-800 hover:underline cursor-pointer px-2 py-1"
+          >
+            Edit
+          </button>
+        </div>
 
-        <Section title="MY BOOKINGS" />
-        <Row icon={Calendar} title="Booking History" sub="View and manage your past services" onClick={onOpenBookings} right={<span className="text-slate-400 font-bold">›</span>} />
+        {/* Audio & Voice Guidance Card */}
+        <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs space-y-3.5">
+          <div className="flex items-center gap-2 text-slate-900 font-extrabold text-xs pb-2 border-b border-slate-100">
+            <Sparkles className="w-4 h-4 text-emerald-600" />
+            <span>Audio & Voice Guidance</span>
+          </div>
 
-        <Section title="DEVELOPER & OWNER" />
-        <Row icon={Key} title="Owner Board Portal" sub="System telemetry & admin tools" onClick={onOpenOwner} right={<span className="text-slate-400 font-bold">›</span>} />
+          {/* App Sound Effects */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-blue-50 text-blue-800 mt-0.5 border border-blue-100">
+                <Volume2 className="w-4 h-4" color={NAVY} />
+              </div>
+              <div>
+                <h4 className="font-extrabold text-slate-900 text-xs">App Sound Effects</h4>
+                <p className="text-[11px] font-medium text-slate-500">Play audio chime on booking & actions</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                const next = !sound;
+                setSound(next);
+                if (notify) notify(`App Sounds turned ${next ? 'ON' : 'OFF'}`);
+              }}
+              className="w-12 h-7 rounded-full p-1 transition-colors duration-200 focus:outline-none flex items-center cursor-pointer"
+              style={{ background: sound ? NAVY : "#CBD5E1" }}
+            >
+              <div className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform duration-200 ${sound ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
 
+          {/* Voice Guidance */}
+          <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-emerald-50 text-emerald-800 mt-0.5 border border-emerald-100">
+                <Mic className="w-4 h-4 text-emerald-700" />
+              </div>
+              <div>
+                <h4 className="font-extrabold text-slate-900 text-xs">Voice Guidance (Screen Reader)</h4>
+                <p className="text-[10px] font-medium text-slate-500 leading-snug max-w-[210px]">
+                  Simulates spoken interface navigation for rural & accessibility users
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onToggleVoice}
+              className="w-12 h-7 rounded-full p-1 transition-colors duration-200 focus:outline-none flex items-center cursor-pointer"
+              style={{ background: voiceEnabled ? NAVY : "#CBD5E1" }}
+            >
+              <div className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform duration-200 ${voiceEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* App Interface Language Card */}
+        <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
+          <div className="flex items-center gap-2 text-slate-900 font-extrabold text-xs">
+            <Globe className="w-4 h-4 text-blue-800" />
+            <span>App Interface Language</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {languagesList.map((l) => {
+              const isSelected = currentLang === l.name || currentLang === l.label;
+              return (
+                <button
+                  key={l.name}
+                  onClick={() => {
+                    onSetLang(l.name);
+                    if (notify) notify(`Language set to ${l.name}`);
+                    if (voiceEnabled) speakAudio(getLoginHelp(l.name), l.name);
+                  }}
+                  className={`py-2.5 px-3 rounded-2xl text-xs font-extrabold border flex items-center justify-between transition-colors cursor-pointer ${
+                    isSelected
+                      ? 'text-white border-blue-900 shadow-xs'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                  style={{ background: isSelected ? NAVY : undefined }}
+                >
+                  <span className="font-bold">{l.name}</span>
+                  <span className={`text-[10px] ${isSelected ? 'text-slate-200' : 'text-slate-400'}`}>{l.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Sign Out Button */}
         <button
           onClick={onLogout}
           type="button"
-          className="w-full mt-6 py-3.5 rounded-2xl font-black border-2 border-red-600 text-red-600 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] transition hover:bg-red-50 shadow-xs text-sm"
+          className="w-full py-3.5 rounded-2xl font-black border-2 border-red-600 text-red-600 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] transition hover:bg-red-50 shadow-xs text-sm"
         >
           <LogOut size={16} /> Sign Out / Logout
         </button>
-        <p className="text-center text-xs font-bold text-slate-400 mt-4 cursor-pointer" onClick={triggerOwnerCheck}>
-          Version 2.4.1 (Stable)<br />Neighborly Trust © 2024 • Owner Console
-        </p>
       </div>
     </div>
   );
@@ -2568,7 +2611,6 @@ export default function App() {
         onLogin={(phoneStr?: string) => handleUserLogin(phoneStr, "customer")}
         goProvider={() => setMode("provider-login")}
         notify={notify}
-        onOpenOwner={() => setShowOwnerPinModal(true)}
         voiceEnabled={voiceEnabled}
         onToggleVoice={toggleVoiceMode}
       />
@@ -2580,7 +2622,6 @@ export default function App() {
         onLogin={(phoneStr?: string) => handleUserLogin(phoneStr, "provider")}
         goCustomer={() => setMode("login")}
         notify={notify}
-        onOpenOwner={() => setShowOwnerPinModal(true)}
         voiceEnabled={voiceEnabled}
         onToggleVoice={toggleVoiceMode}
       />
@@ -2622,7 +2663,6 @@ export default function App() {
           onSaveProfile={() => notify("Provider profile editing coming soon")}
           onLogout={handleLogout}
           onOpenBookings={() => setProviderTab("listings")}
-          onOpenOwner={() => setShowOwnerPinModal(true)}
           notify={notify}
           lang={lang}
           onSetLang={setLang}
@@ -2708,7 +2748,6 @@ export default function App() {
           onSaveProfile={saveProfile}
           onLogout={handleLogout}
           onOpenBookings={() => setTab("bookings")}
-          onOpenOwner={() => setShowOwnerPinModal(true)}
           notify={notify}
           lang={lang}
           onSetLang={setLang}
@@ -2734,44 +2773,6 @@ export default function App() {
         )}
         <VoiceSubtitleBanner voiceEnabled={voiceEnabled} />
         <Toast message={toast} />
-
-        {/* OWNER SECURITY PIN MODAL */}
-        {showOwnerPinModal && (
-          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-slate-900 border-2 border-slate-700 rounded-3xl p-5 w-full max-w-xs text-white shadow-2xl">
-              <div className="flex items-center gap-2 mb-3 text-amber-400 font-black text-sm">
-                <Key size={18} /> Owner & Developer Portal
-              </div>
-              <p className="text-xs font-semibold text-slate-300 mb-4">Enter 4-digit Security PIN to access system telemetry and controls.</p>
-              
-              <input
-                type="password"
-                maxLength={4}
-                value={ownerPinInput}
-                onChange={(e) => setOwnerPinInput(e.target.value)}
-                placeholder="Enter PIN (Default: 9921)"
-                className="w-full py-3 px-3 rounded-2xl bg-slate-950 border-2 border-slate-700 text-center font-mono text-xl font-bold tracking-widest outline-none mb-2 text-white"
-                onKeyDown={(e) => e.key === "Enter" && handleOwnerAuth()}
-              />
-              {pinError && <p className="text-[11px] text-red-400 font-bold mb-3">{pinError}</p>}
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => { setShowOwnerPinModal(false); setPinError(""); setOwnerPinInput(""); }}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-extrabold cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleOwnerAuth}
-                  className="flex-1 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black cursor-pointer shadow-sm"
-                >
-                  Access
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
