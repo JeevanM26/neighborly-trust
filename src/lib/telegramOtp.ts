@@ -8,8 +8,10 @@ export interface TelegramConfig {
   chatId: string;
 }
 
+const FALLBACK_BOT_TOKEN = '8830072583:AAEYhpGNTgD9AMR5hd5RC0eX3QlBi3is73c';
+
 const DEFAULT_CONFIG: TelegramConfig = {
-  botToken: typeof process !== 'undefined' && process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN ? process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN : '',
+  botToken: typeof process !== 'undefined' && process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN ? process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN : FALLBACK_BOT_TOKEN,
   chatId: '7258080421',
 };
 
@@ -28,8 +30,9 @@ export function getTelegramConfig(): TelegramConfig {
     const savedToken = localStorage.getItem('nt_telegram_bot_token');
     const savedChatId = localStorage.getItem('nt_telegram_chat_id');
     const envToken = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN || '' : '';
+    const activeToken = savedToken !== null && savedToken !== '' ? savedToken : (envToken || FALLBACK_BOT_TOKEN);
     return {
-      botToken: savedToken !== null && savedToken !== '' ? savedToken : envToken,
+      botToken: activeToken,
       chatId: savedChatId !== null && savedChatId !== '' ? savedChatId : DEFAULT_CONFIG.chatId,
     };
   } catch {
@@ -79,7 +82,7 @@ export async function sendTelegramOtp(
   const ownerChatIdsMap = getOwnerChatIds();
 
   let targetChatId = customConfig?.chatId || ownerChatIdsMap[cleanPhone] || config.chatId || '7258080421';
-  let botToken = config.botToken || (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN || '' : '');
+  let botToken = config.botToken || (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN || '' : '') || FALLBACK_BOT_TOKEN;
 
   if (!targetChatId && botToken) {
     try {
