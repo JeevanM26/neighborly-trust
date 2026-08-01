@@ -1931,6 +1931,8 @@ function Settings({
 }) {
   const [view, setView] = useState("main");
   const [sound, setSound] = useState(true);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   if (view === "profile") return <ProfileEditScreen onBack={() => setView("main")} profile={profile} onSave={onSaveProfile} />;
   if (view === "notifications") return <NotificationsScreen onBack={() => setView("main")} notify={notify} />;
@@ -1951,7 +1953,7 @@ function Settings({
   ];
 
   return (
-    <div className="h-full flex flex-col bg-slate-50/50">
+    <div className="h-full flex flex-col bg-slate-50/50 relative">
       {/* Top Header matching screenshot */}
       <div className="px-4 py-3 bg-white border-b border-slate-100 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-2.5">
@@ -2094,6 +2096,31 @@ function Settings({
           </div>
         </div>
 
+        {/* Security & Support Links Card */}
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs divide-y divide-slate-100 overflow-hidden">
+          <div
+            onClick={() => setShowPrivacyModal(true)}
+            className="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition"
+          >
+            <div className="flex items-center gap-3 text-xs text-slate-800 font-extrabold">
+              <ShieldCheck className="w-4 h-4 text-blue-800" />
+              <span>Privacy & OWASP Data Security</span>
+            </div>
+            <ChevronLeft className="w-4 h-4 text-slate-400 rotate-180" />
+          </div>
+
+          <div
+            onClick={() => setShowHelpModal(true)}
+            className="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition"
+          >
+            <div className="flex items-center gap-3 text-xs text-slate-800 font-extrabold">
+              <Phone className="w-4 h-4 text-emerald-600" />
+              <span>Help & Local Helpline Support</span>
+            </div>
+            <ChevronLeft className="w-4 h-4 text-slate-400 rotate-180" />
+          </div>
+        </div>
+
         {/* Sign Out Button */}
         <button
           onClick={onLogout}
@@ -2103,6 +2130,103 @@ function Settings({
           <LogOut size={16} /> Sign Out / Logout
         </button>
       </div>
+
+      {/* Privacy & Security Modal */}
+      {showPrivacyModal && (
+        <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-5 max-w-xs w-full shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-slate-900 font-extrabold text-sm">
+                <ShieldCheck className="w-5 h-5 text-blue-800" />
+                <span>Privacy & OWASP Security</span>
+              </div>
+              <button
+                onClick={() => setShowPrivacyModal(false)}
+                className="p-1 rounded-full text-slate-400 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-slate-600 leading-relaxed">
+              <div className="bg-blue-50 p-3 rounded-2xl border border-blue-100 space-y-1">
+                <p className="font-extrabold text-blue-900 flex items-center gap-1.5 text-xs">
+                  <CheckCircle2 className="w-4 h-4 text-blue-800" /> DPDP Act 2023 Compliant
+                </p>
+                <p className="text-[11px] text-slate-600">Your phone number and location are used exclusively to connect you with nearby verified service providers.</p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
+                  <p><strong>Zero Third-Party Tracking:</strong> Your data is never sold or shared with external advertising networks.</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
+                  <p><strong>Local Storage Isolation:</strong> Session tokens and user profiles are stored in isolated browser storage.</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
+                  <p><strong>OWASP Top 10 Hardened:</strong> Input fields are protected against cross-site scripting (XSS) and injection attacks.</p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowPrivacyModal(false)}
+              className="w-full py-2.5 rounded-xl text-white font-bold text-xs hover:bg-blue-950 transition cursor-pointer shadow-xs"
+              style={{ background: NAVY }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Help & Local Helpline Support Modal */}
+      {showHelpModal && (
+        <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-5 max-w-xs w-full shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-slate-900 font-extrabold text-sm">
+                <Phone className="w-5 h-5 text-emerald-600" />
+                <span>Help & Local Helpline Support</span>
+              </div>
+              <button
+                onClick={() => setShowHelpModal(false)}
+                className="p-1 rounded-full text-slate-400 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <a
+                href="tel:18008787289"
+                className="w-full py-3 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-md"
+              >
+                <Phone className="w-4 h-4" />
+                <span>Call Toll-Free Helpline (1-800-TRUST-AZURE)</span>
+              </a>
+
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2 text-slate-700">
+                <p className="font-extrabold text-slate-900 text-xs">Frequently Asked Questions:</p>
+                <div className="space-y-1.5 text-[11px] leading-relaxed">
+                  <p><strong>Q: How do I pay service providers?</strong><br />You pay directly to the provider via UPI or cash upon completion.</p>
+                  <p><strong>Q: Are service providers background checked?</strong><br />Yes, all listed providers undergo local identity verification.</p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowHelpModal(false)}
+              className="w-full py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition cursor-pointer"
+            >
+              Close Support
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
