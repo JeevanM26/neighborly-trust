@@ -48,6 +48,7 @@ export function sortProvidersByDistanceAndFeatured(
   userLng: number
 ): ProviderProfile[] {
   return providers
+    .filter((w) => !w.is_blacklisted)
     .map((w) => {
       const km = distanceKm(userLat, userLng, w.lat, w.lng);
       return {
@@ -57,13 +58,11 @@ export function sortProvidersByDistanceAndFeatured(
       };
     })
     .sort((a, b) => {
-      // If one is featured and the other is not, and distances are within 5km, rank featured higher
+      // 1. Featured / Paid Top-Placement providers prioritized first
       if (a.featured !== b.featured) {
-        const diff = Math.abs((a.distanceKm || 0) - (b.distanceKm || 0));
-        if (diff < 5) {
-          return a.featured ? -1 : 1;
-        }
+        return a.featured ? -1 : 1;
       }
+      // 2. Otherwise sort by distance ascending
       return (a.distanceKm || 0) - (b.distanceKm || 0);
     });
 }

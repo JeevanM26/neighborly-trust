@@ -23,6 +23,8 @@ export interface UserProfile {
   created_at?: string;
 }
 
+export const OWNER_PHONE_NUMBERS = ['7975182162', '8867268712'];
+
 export interface ProviderProfile {
   id: string;
   name: string;
@@ -37,6 +39,7 @@ export interface ProviderProfile {
   lng: number;
   featured: boolean;
   featured_until?: string | null;
+  is_blacklisted?: boolean;
   distanceKm?: number;
   distanceLabel?: string;
   about?: string;

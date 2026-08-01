@@ -5,10 +5,11 @@ import {
   User, Star, ShieldCheck, Phone, MessageSquare, MapPin, Calendar,
   Menu, Globe, Volume2, Mic, LogOut, CheckCircle2, Clock, TrendingUp,
   Briefcase, Mail, Lock, CreditCard, Plus, Navigation, X, IndianRupee, Trash2,
-  AlertCircle, Database, Server, Cpu, ShieldAlert, Eye, RefreshCw, Key, VolumeX, Sparkles
+  AlertCircle, Database, Server, Cpu, ShieldAlert, Eye, RefreshCw, Key, VolumeX, Sparkles, ShieldOff, Award
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { speakAudio, stopAudio, registerSpeakListener, normalizeLangKey } from "@/lib/audio";
+import { OWNER_PHONE_NUMBERS } from "@/lib/types";
 
 /* ---------------------------------------------------------
    NEIGHBORLY TRUST — High Precision & Multi-lingual Engine
@@ -273,14 +274,20 @@ function useUserLocation() {
   return { loc: loc || DEFAULT_LOCATION, status, placeName, retry: request };
 }
 
-// Adds a live `distanceKm`/`distanceLabel` to each worker relative to `loc`, nearest first.
-function withDistances(workers: typeof INITIAL_WORKERS, loc: { lat: number; lng: number }) {
+// Adds a live `distanceKm`/`distanceLabel` to each worker relative to `loc`, filtering blacklisted and placing Paid Top first.
+function withDistances(workers: any[], loc: { lat: number; lng: number }) {
   return workers
+    .filter((w) => !w.is_blacklisted)
     .map((w) => {
       const km = distanceKm(loc.lat, loc.lng, w.lat, w.lng);
       return { ...w, distanceKm: km, distance: formatDistance(km) };
     })
-    .sort((a, b) => a.distanceKm - b.distanceKm);
+    .sort((a, b) => {
+      if (a.featured !== b.featured) {
+        return a.featured ? -1 : 1;
+      }
+      return a.distanceKm - b.distanceKm;
+    });
 }
 
 function LocationBanner({ status, placeName, retry }: { status: string; placeName: string | null; retry: () => void }) {
@@ -527,6 +534,8 @@ function DeveloperOwnerBoard({
   bookings,
   listings,
   workers,
+  onToggleFeatured,
+  onToggleBlacklist,
   onInjectWorker,
   onPurgeStorage,
   notify
@@ -535,6 +544,8 @@ function DeveloperOwnerBoard({
   bookings: any[];
   listings: any[];
   workers: any[];
+  onToggleFeatured: (id: any) => void;
+  onToggleBlacklist: (id: any) => void;
   onInjectWorker: () => void;
   onPurgeStorage: () => void;
   notify: (m: string) => void;
@@ -551,7 +562,7 @@ function DeveloperOwnerBoard({
     }
   }, []);
 
-  const totalEarnings = bookings.reduce((sum, b) => sum + (b.worker?.hourly_rate || 500), 0);
+  const totalEarnings = bookings.reduce((sum, b) => sum + (b.worker?.hourly_rate || b.worker?.hourlyRateINR || 350), 0);
   const estCommission = Math.round(totalEarnings * 0.08);
 
   return (
@@ -561,8 +572,11 @@ function DeveloperOwnerBoard({
         <div className="flex items-center gap-2">
           <Cpu className="text-amber-400 animate-pulse" size={20} />
           <div>
-            <h2 className="font-extrabold text-sm text-white">Owner & Developer Board</h2>
-            <p className="text-[10px] text-slate-400">System Telemetry & Controls</p>
+            <h2 className="font-extrabold text-sm text-white flex items-center gap-1.5">
+              <span>Owner & Developer Board</span>
+              <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono">OWNER PORTAL</span>
+            </h2>
+            <p className="text-[10px] text-slate-400">Paid Placement, Blacklist & Telemetry</p>
           </div>
         </div>
         <button onClick={onClose} className="p-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white cursor-pointer">
@@ -582,7 +596,7 @@ function DeveloperOwnerBoard({
           onClick={() => setTab("inspector")}
           className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1 transition cursor-pointer ${tab === "inspector" ? "bg-amber-500 text-slate-950 font-bold" : "text-slate-400 hover:bg-slate-800"}`}
         >
-          <Database size={13} /> Inspector ({bookings.length})
+          <Database size={13} /> Providers ({workers.length})
         </button>
         <button
           onClick={() => setTab("controls")}
@@ -598,10 +612,18 @@ function DeveloperOwnerBoard({
           <div className="space-y-3">
             <div className="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700">
               <p className="text-xs font-bold text-slate-400 mb-2 flex items-center justify-between">
-                <span>SYSTEM HEALTH</span>
+                <span>SYSTEM & AUTH HEALTH</span>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">ONLINE</span>
               </p>
               <div className="space-y-2 text-xs">
+                <div className="flex justify-between items-center py-1 border-b border-slate-700/50">
+                  <span className="text-slate-400">Designated Owner Phones</span>
+                  <span className="font-mono text-amber-300 font-semibold">{OWNER_PHONE_NUMBERS.join(", ")}</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-slate-700/50">
+                  <span className="text-slate-400">Passkey Engine</span>
+                  <span className="text-emerald-400 font-semibold">2-Step Telegram Bot Ready (PIN: 9921)</span>
+                </div>
                 <div className="flex justify-between items-center py-1 border-b border-slate-700/50">
                   <span className="text-slate-400">Database (Supabase)</span>
                   <span className={`font-semibold ${supabaseConnected ? "text-emerald-400" : "text-amber-400"}`}>
@@ -611,14 +633,6 @@ function DeveloperOwnerBoard({
                 <div className="flex justify-between items-center py-1 border-b border-slate-700/50">
                   <span className="text-slate-400">Environment</span>
                   <span className="font-mono text-slate-200">GitHub Pages (Static Export)</span>
-                </div>
-                <div className="flex justify-between items-center py-1 border-b border-slate-700/50">
-                  <span className="text-slate-400">Auth Engine</span>
-                  <span className="text-emerald-400 font-semibold">Phone OTP + DPDP Consent</span>
-                </div>
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-slate-400">Input Security</span>
-                  <span className="text-emerald-400 font-semibold">XSS Sanitized</span>
                 </div>
               </div>
             </div>
@@ -642,34 +656,78 @@ function DeveloperOwnerBoard({
         {tab === "inspector" && (
           <div className="space-y-3">
             <div className="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700">
-              <p className="text-xs font-bold text-slate-400 mb-2">ACTIVE BOOKINGS LOG ({bookings.length})</p>
-              {bookings.length === 0 ? (
-                <p className="text-xs text-slate-500 italic text-center py-4">No bookings recorded in system memory.</p>
-              ) : (
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {bookings.map((b, i) => (
-                    <div key={b.id || i} className="bg-slate-900 p-2.5 rounded-lg text-xs border border-slate-700">
-                      <div className="flex justify-between font-semibold text-slate-200">
-                        <span>{b.worker?.name || "Service Request"}</span>
-                        <span className="text-amber-400">₹{b.worker?.hourly_rate || 500}</span>
+              <p className="text-xs font-bold text-slate-400 mb-2 flex items-center justify-between">
+                <span>MANAGE PROVIDERS & PAID PLACEMENT</span>
+                <span className="text-[10px] text-amber-400 font-bold">{workers.length} Total</span>
+              </p>
+              
+              <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                {workers.map((w) => (
+                  <div key={w.id} className="bg-slate-900 p-3 rounded-xl border border-slate-700 space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-extrabold text-sm text-white">{w.name}</span>
+                          {w.featured && (
+                            <span className="text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/40 px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                              <Award size={10} /> Paid Top
+                            </span>
+                          )}
+                          {w.is_blacklisted && (
+                            <span className="text-[10px] bg-red-500/20 text-red-400 border border-red-500/40 px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                              <ShieldOff size={10} /> Blacklisted
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5">{w.category || w.role} • ★ {w.rating} ({w.reviews || w.reviews_count || 0} reviews)</p>
                       </div>
-                      <p className="text-[10px] text-slate-400 mt-1">Status: {b.status} • {b.createdAt ? new Date(b.createdAt).toLocaleTimeString() : 'Just now'}</p>
+                      <span className="text-amber-400 font-extrabold text-xs">₹{w.hourly_rate || w.hourlyRateINR || 350}/hr</span>
+                    </div>
+
+                    <div className="flex gap-2 pt-1 border-t border-slate-800">
+                      {/* Toggle Paid Top Placement */}
+                      <button
+                        onClick={() => onToggleFeatured(w.id)}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold flex items-center justify-center gap-1 transition cursor-pointer ${
+                          w.featured
+                            ? "bg-amber-400 text-slate-950 hover:bg-amber-300"
+                            : "bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
+                        }`}
+                      >
+                        <Award size={13} /> {w.featured ? "👑 Top Paid (ON)" : "Make Paid Top"}
+                      </button>
+
+                      {/* Toggle Blacklist / Ban */}
+                      <button
+                        onClick={() => onToggleBlacklist(w.id)}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold flex items-center justify-center gap-1 transition cursor-pointer ${
+                          w.is_blacklisted
+                            ? "bg-red-600 text-white hover:bg-red-500"
+                            : "bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
+                        }`}
+                      >
+                        <ShieldOff size={13} /> {w.is_blacklisted ? "🚫 Banned (Blacklisted)" : "Blacklist"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700">
+              <p className="text-xs font-bold text-slate-400 mb-2">RECENT BOOKINGS LOG ({bookings.length})</p>
+              {bookings.length === 0 ? (
+                <p className="text-xs text-slate-500 italic text-center py-3">No bookings recorded in session memory.</p>
+              ) : (
+                <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                  {bookings.map((b, i) => (
+                    <div key={b.id || i} className="flex justify-between items-center text-xs py-1.5 px-2.5 rounded bg-slate-900 border border-slate-800">
+                      <span className="text-slate-300 font-medium">{b.worker?.name || b.workerName || "Service Request"}</span>
+                      <span className="text-emerald-400 font-mono text-[10px]">{b.status}</span>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
-
-            <div className="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700">
-              <p className="text-xs font-bold text-slate-400 mb-2">REGISTERED WORKERS ({workers.length})</p>
-              <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                {workers.map((w) => (
-                  <div key={w.id} className="flex justify-between items-center text-xs py-1 px-2 rounded bg-slate-900">
-                    <span className="text-slate-300 font-medium">{w.name} ({w.category})</span>
-                    <span className="text-emerald-400 font-mono text-[10px]">{w.available}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         )}
@@ -702,7 +760,7 @@ function DeveloperOwnerBoard({
             </div>
 
             <p className="text-[10px] text-slate-500 text-center">
-              Owner Board Access Key verified. Session secured with DPDP 2023 compliance auditing.
+              Owner Board Access Key verified for {OWNER_PHONE_NUMBERS.join(" & ")}. Session secured with DPDP 2023 compliance auditing.
             </p>
           </div>
         )}
@@ -749,6 +807,14 @@ function CustomerLogin({ onLogin, goProvider, lang, setLang, notify, onOpenOwner
     if (!sanitizedName) { setError("Please enter your full name."); return; }
     if (!/^[6-9]\d{9}$/.test(phone.replace(/\s/g, ""))) { setError("Please enter a valid 10-digit mobile number."); return; }
     if (!consent) { setError("Please accept the privacy consent."); return; }
+
+    const cleanPhone = phone.replace(/\D/g, "");
+    if (OWNER_PHONE_NUMBERS.includes(cleanPhone)) {
+      notify(`Designated Owner Number Recognized (${cleanPhone}). Opening 2-Step Owner Verification...`);
+      onOpenOwner();
+      return;
+    }
+
     setError(""); setLoading(true);
 
     const code = Math.floor(1000 + Math.random() * 9000).toString();
@@ -1018,6 +1084,14 @@ function ProviderLogin({ onLogin, goCustomer, notify, onOpenOwner, voiceEnabled,
     const sanitizedName = sanitizeText(name.trim());
     if (!sanitizedName) { setError("Please enter your full name."); return; }
     if (!/^[6-9]\d{9}$/.test(phone.replace(/\s/g, ""))) { setError("Please enter a valid 10-digit mobile number."); return; }
+
+    const cleanPhone = phone.replace(/\D/g, "");
+    if (OWNER_PHONE_NUMBERS.includes(cleanPhone)) {
+      notify(`Designated Owner Number Recognized (${cleanPhone}). Opening 2-Step Owner Verification...`);
+      onOpenOwner();
+      return;
+    }
+
     setError(""); setLoading(true);
 
     const code = Math.floor(1000 + Math.random() * 9000).toString();
@@ -2264,6 +2338,32 @@ export default function App() {
     notify("Test Provider 'Ramesh Gowda' Injected!");
   };
 
+  const toggleFeatured = (id: any) => {
+    setWorkers((prev) =>
+      prev.map((w) => {
+        if (w.id === id) {
+          const next = !w.featured;
+          notify(`${w.name} ${next ? "boosted to Paid Top Placement!" : "removed from Top Placement"}`);
+          return { ...w, featured: next };
+        }
+        return w;
+      })
+    );
+  };
+
+  const toggleBlacklist = (id: any) => {
+    setWorkers((prev) =>
+      prev.map((w) => {
+        if (w.id === id) {
+          const next = !w.is_blacklisted;
+          notify(`${w.name} ${next ? "has been BLACKLISTED / BANNED" : "restored to active status"}`);
+          return { ...w, is_blacklisted: next };
+        }
+        return w;
+      })
+    );
+  };
+
   const purgeStorage = () => {
     setBookings([]);
     setListings([]);
@@ -2303,6 +2403,8 @@ export default function App() {
         bookings={bookings}
         listings={listings}
         workers={workers}
+        onToggleFeatured={toggleFeatured}
+        onToggleBlacklist={toggleBlacklist}
         onInjectWorker={injectTestWorker}
         onPurgeStorage={purgeStorage}
         notify={notify}
