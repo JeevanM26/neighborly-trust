@@ -1,25 +1,47 @@
-import type { Metadata } from 'next';
-import './globals.css';
-import { AppProvider } from '../context/AppContext';
-import { AppShell } from '../components/AppShell';
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#0B3D66',
+};
 
 export const metadata: Metadata = {
-  title: 'Neighborly Trust — Rural Service Connect',
-  description: 'Production-ready, mobile-first, localized on-demand service marketplace for rural communities.',
-  manifest: '/manifest.json',
+  title: "Neighborly Trust — Find Local Service Specialists",
+  description:
+    "Book verified local electricians, plumbers, carpenters, and home cleaners in your area. Fast, reliable, and trustworthy service at your doorstep.",
+  keywords: "electrician, plumber, carpenter, home cleaning, local services, book service, Shivamogga, Karnataka",
+  authors: [{ name: "Neighborly Trust" }],
+  openGraph: {
+    title: "Neighborly Trust",
+    description: "Find and book verified local service specialists near you.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
-      <body className="font-sans bg-slate-100 antialiased">
-        <AppProvider>
-          <AppShell>{children}</AppShell>
-        </AppProvider>
+      <head>
+        <meta name="theme-color" content="#0B3D66" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+      </head>
+      <body>
+        <div id="app-root">
+          {children}
+        </div>
       </body>
     </html>
   );

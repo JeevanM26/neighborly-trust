@@ -17,16 +17,16 @@ export const WorkerCard: React.FC<{ worker: WorkerSpecialist }> = ({ worker }) =
           {/* Avatar & Online Dot */}
           <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
             <Image
-              src={worker.avatarUrl}
-              alt={worker.fullName}
+              src={worker.avatarUrl || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150&auto=format&fit=crop&q=80'}
+              alt={worker.fullName || worker.name || 'Provider'}
               fill
               className="object-cover"
             />
             <span
               className={`absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${
-                worker.isOnline ? 'bg-emerald-500' : 'bg-slate-400'
+                (worker.isOnline ?? worker.is_online) ? 'bg-emerald-500' : 'bg-slate-400'
               }`}
-              title={worker.isOnline ? 'Online Now' : 'Offline'}
+              title={(worker.isOnline ?? worker.is_online) ? 'Online Now' : 'Offline'}
             />
           </div>
 
@@ -34,26 +34,26 @@ export const WorkerCard: React.FC<{ worker: WorkerSpecialist }> = ({ worker }) =
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-slate-900 text-sm truncate">
-                {worker.fullName}
+                {worker.fullName || worker.name}
               </h3>
               <div className="flex items-center space-x-1 bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md text-xs font-bold border border-amber-200/60">
                 <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                <span>{worker.rating.toFixed(1)}</span>
-                <span className="text-[10px] text-amber-600 font-normal">({worker.reviewsCount})</span>
+                <span>{(worker.rating || 5.0).toFixed(1)}</span>
+                <span className="text-[10px] text-amber-600 font-normal">({worker.reviewsCount ?? worker.reviews_count ?? 0})</span>
               </div>
             </div>
 
             <p className="text-xs font-semibold text-blue-800 mt-0.5">
-              {worker.tradeCategory}
+              {worker.tradeCategory || worker.category}
             </p>
 
             <div className="flex items-center space-x-3 text-xs text-slate-500 mt-2">
               <span className="flex items-center space-x-1">
                 <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                <span>{worker.distanceKm} km away</span>
+                <span>{worker.distanceKm ? `${worker.distanceKm.toFixed(1)} km away` : 'Nearby'}</span>
               </span>
               <span className="font-semibold text-slate-900">
-                ₹{worker.hourlyRateINR} <span className="text-[10px] text-slate-500 font-normal">/ hr</span>
+                ₹{worker.hourlyRateINR ?? worker.hourly_rate ?? 350} <span className="text-[10px] text-slate-500 font-normal">/ hr</span>
               </span>
             </div>
           </div>

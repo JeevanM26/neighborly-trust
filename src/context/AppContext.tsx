@@ -1,354 +1,290 @@
 'use client';
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
-  UserProfile,
-  WorkerSpecialist,
-  ServiceBooking,
-  AppSettings,
-  LanguageCode,
-  UserRole,
-  TradeCategory,
-  BookingStatus,
+  UserProfile, Provider, Booking, AppSettings, LanguageCode, ToastState,
+  DEFAULT_LOCATION, OWNER_PHONES,
 } from '../lib/types';
-import { TRANSLATIONS } from '../lib/i18n';
-import { speakAudio, stopAudio, playAudioFeedback, normalizeLangKey } from '../lib/audio';
+import { fetchProviders, fetchCustomerBookings, createBooking, isConfigured } from '../lib/supabase';
 import confetti from 'canvas-confetti';
 
-interface ToastMessage {
-  id: string;
-  title: string;
-  description: string;
-  type: 'success' | 'info' | 'warning';
+// ─── i18n (inline minimal — key phrases only) ─────────────
+export const T: Record<string, Record<string, string>> = {
+  en: {
+    findService:    'Find a Service',
+    nearbyWorkers:  'Verified Specialists Near You',
+    myBookings:     'My Bookings',
+    profile:        'My Profile',
+    bookNow:        'Book Now',
+    bookingSuccess: 'Booking Confirmed!',
+    loading:        'Loading…',
+    noProviders:    'No specialists found in your area yet.',
+    noBookings:     'No bookings yet. Book your first service!',
+  },
+  kn: {
+    findService:    'ಸೇವೆ ಹುಡುಕಿ',
+    nearbyWorkers:  'ನಿಮ್ಮ ಬಳಿ ಪರಿಶೀಲಿತ ತಜ್ಞರು',
+    myBookings:     'ನನ್ನ ಬುಕಿಂಗ್‌ಗಳು',
+    profile:        'ನನ್ನ ಪ್ರೊಫೈಲ್',
+    bookNow:        'ಈಗ ಬುಕ್ ಮಾಡಿ',
+    bookingSuccess: 'ಬುಕಿಂಗ್ ದೃಢಪಡಿಸಲಾಗಿದೆ!',
+    loading:        'ಲೋಡ್ ಆಗುತ್ತಿದೆ…',
+    noProviders:    'ನಿಮ್ಮ ಪ್ರದೇಶದಲ್ಲಿ ಇನ್ನೂ ಯಾವ ತಜ್ಞರೂ ಇಲ್ಲ.',
+    noBookings:     'ಇನ್ನೂ ಬುಕಿಂಗ್ ಇಲ್ಲ. ಮೊದಲ ಸೇವೆ ಬುಕ್ ಮಾಡಿ!',
+  },
+  hi: {
+    findService:    'सेवा खोजें',
+    nearbyWorkers:  'आपके पास सत्यापित विशेषज्ञ',
+    myBookings:     'मेरी बुकिंग',
+    profile:        'मेरी प्रोफाइल',
+    bookNow:        'अभी बुक करें',
+    bookingSuccess: 'बुकिंग पुष्टि!',
+    loading:        'लोड हो रहा है…',
+    noProviders:    'आपके क्षेत्र में अभी कोई विशेषज्ञ नहीं है।',
+    noBookings:     'अभी कोई बुकिंग नहीं। पहली सेवा बुक करें!',
+  },
+};
+
+function t(key: string, lang: LanguageCode): string {
+  return T[lang]?.[key] ?? T['en'][key] ?? key;
 }
 
+// ─── Haversine Distance ────────────────────────────────────
+export function calcDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dL = ((lat2 - lat1) * Math.PI) / 180;
+  const dG = ((lng2 - lng1) * Math.PI) / 180;
+  const a = Math.sin(dL / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dG / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ─── Context Shape ─────────────────────────────────────────
 interface AppContextType {
+  // Auth
   user: UserProfile | null;
-  workers: WorkerSpecialist[];
-  bookings: ServiceBooking[];
+  isLoggedIn: boolean;
+  loginUser: (phone: string, name: string) => void;
+  logoutUser: () => void;
+
+  // Data
+  providers: Provider[];
+  bookings: Booking[];
+  isLoading: boolean;
+  refreshProviders: () => Promise<void>;
+  refreshBookings: () => Promise<void>;
+
+  // Actions
+  bookProvider: (provider: Provider, notes?: string) => Promise<void>;
+
+  // Settings
   settings: AppSettings;
-  activeToast: ToastMessage | null;
-  t: (key: string) => string;
-  login: (phone: string, role: UserRole) => void;
-  logout: () => void;
   setLanguage: (lang: LanguageCode) => void;
-  toggleWorkerOnlineStatus: (workerId: string) => void;
-  quickBookWorker: (workerId: string) => void;
-  updateBookingStatus: (bookingId: string, status: BookingStatus) => void;
-  toggleAppSounds: () => void;
-  toggleVoiceGuidance: () => void;
-  speakText: (text: string) => void;
-  closeToast: () => void;
+  toggleSounds: () => void;
+  toggleVoice: () => void;
+
+  // UI
+  toast: ToastState | null;
+  showToast: (message: string, type?: ToastState['type']) => void;
+  dismissToast: () => void;
+
+  // Util
+  translate: (key: string) => string;
+
+  // Location
+  userLocation: { lat: number; lng: number };
+  locationStatus: 'loading' | 'granted' | 'denied';
+  requestLocation: () => void;
 }
-
-const INITIAL_WORKERS: WorkerSpecialist[] = [
-  {
-    id: 'worker-1',
-    fullName: 'Jim Caldwell',
-    phone: '+91 98765 43210',
-    tradeCategory: 'Electrician',
-    bio: 'Master Electrician with 12+ years experience in domestic & farm wiring.',
-    hourlyRateINR: 350,
-    rating: 4.9,
-    reviewsCount: 48,
-    isOnline: true,
-    distanceKm: 0.8,
-    avatarUrl: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'worker-2',
-    fullName: 'Sarah Jenkins',
-    phone: '+91 98765 43211',
-    tradeCategory: 'Plumber',
-    bio: 'Plumbing Specialist for leaks, pipe fittings, solar heaters & borewell pumps.',
-    hourlyRateINR: 400,
-    rating: 4.9,
-    reviewsCount: 36,
-    isOnline: true,
-    distanceKm: 1.2,
-    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'worker-3',
-    fullName: 'Ramesh Kumar',
-    phone: '+91 98765 43212',
-    tradeCategory: 'Carpenter',
-    bio: 'Custom woodwork, roof repair, door fittings & agricultural tool handles.',
-    hourlyRateINR: 300,
-    rating: 4.8,
-    reviewsCount: 52,
-    isOnline: true,
-    distanceKm: 1.5,
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'worker-4',
-    fullName: 'Robert Evans',
-    phone: '+91 98765 43213',
-    tradeCategory: 'Painting/Repairs',
-    bio: 'Wall plastering, exterior waterproofing & residential painting expert.',
-    hourlyRateINR: 320,
-    rating: 4.7,
-    reviewsCount: 29,
-    isOnline: true,
-    distanceKm: 2.1,
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'worker-5',
-    fullName: 'Arthur Miller',
-    phone: '+91 98765 43214',
-    tradeCategory: 'Electrician',
-    bio: 'Solar panel repair, inverter setup & emergency power wiring.',
-    hourlyRateINR: 380,
-    rating: 4.9,
-    reviewsCount: 61,
-    isOnline: true,
-    distanceKm: 2.5,
-    avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
-  },
-];
-
-const INITIAL_BOOKINGS: ServiceBooking[] = [
-  {
-    id: 'booking-101',
-    customerId: 'cust-1',
-    customerName: 'Anand Sharma',
-    customerPhone: '+91 91234 56789',
-    workerId: 'worker-1',
-    workerName: 'Jim Caldwell',
-    serviceType: 'Electrician',
-    status: 'pending',
-    totalINR: 350,
-    distanceKm: 0.8,
-    createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-  },
-  {
-    id: 'booking-100',
-    customerId: 'cust-2',
-    customerName: 'Priya Reddy',
-    customerPhone: '+91 98765 11223',
-    workerId: 'worker-1',
-    workerName: 'Jim Caldwell',
-    serviceType: 'Emergency Wiring Repair',
-    status: 'completed',
-    totalINR: 700,
-    distanceKm: 1.1,
-    createdAt: 'Yesterday',
-  },
-];
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+// ─── Provider ─────────────────────────────────────────────
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // ── Auth ──
   const [user, setUser] = useState<UserProfile | null>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nt_user');
-      return saved ? JSON.parse(saved) : null;
-    }
-    return null;
+    if (typeof window === 'undefined') return null;
+    try { return JSON.parse(localStorage.getItem('nt_user') ?? 'null'); } catch { return null; }
   });
 
-  const [workers, setWorkers] = useState<WorkerSpecialist[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nt_workers');
-      return saved ? JSON.parse(saved) : INITIAL_WORKERS;
-    }
-    return INITIAL_WORKERS;
-  });
+  // ── Data ──
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [bookings, setBookings] = useState<ServiceBooking[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nt_bookings');
-      return saved ? JSON.parse(saved) : INITIAL_BOOKINGS;
-    }
-    return INITIAL_BOOKINGS;
-  });
-
+  // ── Settings ──
   const [settings, setSettings] = useState<AppSettings>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nt_settings');
-      return saved
-        ? JSON.parse(saved)
-        : { appSounds: true, voiceGuidance: false, selectedLanguage: 'en' };
-    }
-    return { appSounds: true, voiceGuidance: false, selectedLanguage: 'en' };
+    if (typeof window === 'undefined') return { language: 'en', sounds: true, voice: false };
+    try { return JSON.parse(localStorage.getItem('nt_settings') ?? 'null') ?? { language: 'en', sounds: true, voice: false }; }
+    catch { return { language: 'en', sounds: true, voice: false }; }
   });
 
-  const [activeToast, setActiveToast] = useState<ToastMessage | null>(null);
+  // ── Toast ──
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync to LocalStorage
+  // ── Location ──
+  const [userLocation, setUserLocation] = useState(DEFAULT_LOCATION);
+  const [locationStatus, setLocationStatus] = useState<'loading' | 'granted' | 'denied'>('loading');
+
+  // ── Persist user + settings ──
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('nt_user', JSON.stringify(user));
-      localStorage.setItem('nt_workers', JSON.stringify(workers));
-      localStorage.setItem('nt_bookings', JSON.stringify(bookings));
-      localStorage.setItem('nt_settings', JSON.stringify(settings));
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('nt_user', JSON.stringify(user));
+  }, [user]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('nt_settings', JSON.stringify(settings));
+  }, [settings]);
+
+  // ── Request GPS ──
+  const requestLocation = useCallback(() => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setLocationStatus('denied');
+      return;
     }
-  }, [user, workers, bookings, settings]);
+    setLocationStatus('loading');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocationStatus('granted');
+      },
+      () => setLocationStatus('denied'),
+      { timeout: 8000, maximumAge: 60000 }
+    );
+  }, []);
 
-  const t = (key: string): string => {
-    const lang = settings.selectedLanguage;
-    return TRANSLATIONS[lang]?.[key] || TRANSLATIONS.en[key] || key;
-  };
+  useEffect(() => { requestLocation(); }, [requestLocation]);
 
-  const playAudio = (type: 'success' | 'click' | 'toggle') => {
-    if (!settings.appSounds) return;
-    playAudioFeedback(type);
-  };
+  // ── Fetch providers ──
+  const refreshProviders = useCallback(async () => {
+    setIsLoading(true);
+    const data = await fetchProviders();
+    if (data.length > 0) setProviders(data);
+    setIsLoading(false);
+  }, []);
 
-  const speakText = (text: string, customLang?: string) => {
-    if (!settings.voiceGuidance) return;
-    speakAudio(text, customLang || settings.selectedLanguage || 'en');
-  };
+  // ── Fetch bookings ──
+  const refreshBookings = useCallback(async () => {
+    if (!user?.id) return;
+    const data = await fetchCustomerBookings(user.id);
+    setBookings(data);
+  }, [user?.id]);
 
-  const login = (phone: string, role: UserRole) => {
-    const isWorker = role === 'worker';
-    const newUser: UserProfile = {
-      id: isWorker ? 'worker-1' : 'user-999',
-      fullName: isWorker ? 'Jim Caldwell' : 'Anand Sharma',
-      phone: phone || '+91 98765 43210',
-      role: role,
-      language: settings.selectedLanguage,
-      avatarUrl: isWorker
-        ? 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150&auto=format&fit=crop&q=80'
-        : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+  useEffect(() => { refreshProviders(); }, [refreshProviders]);
+  useEffect(() => { if (user) refreshBookings(); }, [user, refreshBookings]);
+
+  // ── Toast ──
+  const showToast = useCallback((message: string, type: ToastState['type'] = 'success') => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ id: Date.now().toString(), message, type });
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  const dismissToast = useCallback(() => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(null);
+  }, []);
+
+  // ── Auth ──
+  const loginUser = useCallback((phone: string, name: string) => {
+    const isOwner = OWNER_PHONES.includes(phone.replace(/\D/g, ''));
+    const profile: UserProfile = {
+      id: `cust_${phone.replace(/\D/g, '')}`,
+      full_name: name,
+      phone,
+      role: isOwner ? 'owner' : 'customer',
+      language: settings.language,
+      consent_given: true,
     };
-    setUser(newUser);
-    playAudio('success');
-    speakText(`Logged in successfully as ${role}`);
-  };
+    setUser(profile);
+    showToast(`Welcome, ${name.split(' ')[0]}! 👋`);
+  }, [settings.language, showToast]);
 
-  const logout = () => {
+  const logoutUser = useCallback(() => {
     setUser(null);
+    setBookings([]);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('nt_user');
-      localStorage.removeItem('nt-customer-profile');
-      localStorage.removeItem('nt-online');
     }
-    playAudio('toggle');
-    speakText('Logged out of Neighborly Trust');
-  };
+  }, []);
 
-  const setLanguage = (lang: LanguageCode) => {
-    setSettings((prev) => ({ ...prev, selectedLanguage: lang }));
-    playAudio('click');
-    const selectedObj = TRANSLATIONS[lang];
-    if (selectedObj?.appTitle) {
-      speakAudio(selectedObj.appTitle, lang);
-    }
-  };
+  // ── Book a provider ──
+  const bookProvider = useCallback(async (provider: Provider, notes?: string) => {
+    if (!user) return;
 
-  const toggleWorkerOnlineStatus = (workerId: string) => {
-    setWorkers((prev) =>
-      prev.map((w) => {
-        if (w.id === workerId) {
-          const updated = !w.isOnline;
-          speakText(`${w.fullName} is now ${updated ? 'Online' : 'Offline'}`);
-          return { ...w, isOnline: updated };
-        }
-        return w;
-      })
-    );
-    playAudioFeedback('toggle');
-  };
-
-  const quickBookWorker = (workerId: string) => {
-    const worker = workers.find((w) => w.id === workerId);
-    if (!worker) return;
-
-    const newBooking: ServiceBooking = {
-      id: `booking-${Date.now().toString().slice(-4)}`,
-      customerId: user?.id || 'cust-101',
-      customerName: user?.fullName || 'Neighbor Customer',
-      customerPhone: user?.phone || '+91 98765 00000',
-      workerId: worker.id,
-      workerName: worker.fullName,
-      serviceType: worker.tradeCategory,
+    const tempId = `tmp_${Date.now()}`;
+    const tempBooking: Booking = {
+      id: tempId,
+      customer_id: user.id,
+      provider_id: provider.id,
+      provider_name: provider.name,
+      provider_category: provider.category,
+      provider_avatar: provider.avatar_url,
+      service_type: provider.category,
       status: 'pending',
-      totalINR: worker.hourlyRateINR,
-      distanceKm: worker.distanceKm,
-      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      total_amount: provider.hourly_rate,
+      commission_amount: Math.round(provider.hourly_rate * 0.08),
+      address_notes: notes,
+      created_at: new Date().toISOString(),
     };
 
-    setBookings((prev) => [newBooking, ...prev]);
-    playAudioFeedback('success');
+    setBookings(prev => [tempBooking, ...prev]);
 
-    try {
-      confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
-    } catch {
-      // Confetti fallback
+    // Async Supabase insert
+    if (isConfigured()) {
+      const realId = await createBooking({
+        customerId: user.id,
+        providerId: provider.id,
+        serviceType: provider.category,
+        totalAmount: provider.hourly_rate,
+        notes,
+      });
+      if (realId) {
+        setBookings(prev => prev.map(b => b.id === tempId ? { ...b, id: realId } : b));
+      }
     }
 
-    const toastText = `${t('bookingNotification')} ${worker.fullName}`;
-    setActiveToast({
-      id: newBooking.id,
-      title: t('bookingConfirmed'),
-      description: toastText,
-      type: 'success',
-    });
+    // Celebrate
+    try {
+      confetti({ particleCount: 60, spread: 70, origin: { y: 0.7 }, colors: ['#0B3D66', '#F59E0B', '#10B981'] });
+    } catch { /* ignore */ }
 
-    speakText(`${t('bookingConfirmed')}. ${toastText}`);
-  };
+    showToast(T[settings.language]?.bookingSuccess ?? 'Booking Confirmed! 🎉', 'success');
+  }, [user, settings.language, showToast]);
 
-  const updateBookingStatus = (bookingId: string, status: BookingStatus) => {
-    setBookings((prev) =>
-      prev.map((b) => (b.id === bookingId ? { ...b, status } : b))
-    );
-    playAudioFeedback(status === 'accepted' ? 'success' : 'toggle');
-    speakText(`Job ${status}`);
-  };
+  // ── Settings ──
+  const setLanguage = useCallback((lang: LanguageCode) => {
+    setSettings(s => ({ ...s, language: lang }));
+  }, []);
 
-  const toggleAppSounds = () => {
-    setSettings((prev) => {
-      const next = !prev.appSounds;
-      return { ...prev, appSounds: next };
-    });
-  };
+  const toggleSounds = useCallback(() => {
+    setSettings(s => ({ ...s, sounds: !s.sounds }));
+  }, []);
 
-  const toggleVoiceGuidance = () => {
-    setSettings((prev) => {
-      const next = !prev.voiceGuidance;
-      if (next && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        const u = new SpeechSynthesisUtterance('Voice guidance screen reading enabled');
-        window.speechSynthesis.speak(u);
-      }
-      return { ...prev, voiceGuidance: next };
-    });
-  };
+  const toggleVoice = useCallback(() => {
+    setSettings(s => ({ ...s, voice: !s.voice }));
+  }, []);
 
-  const closeToast = () => setActiveToast(null);
+  const translate = useCallback((key: string) => t(key, settings.language), [settings.language]);
 
   return (
-    <AppContext.Provider
-      value={{
-        user,
-        workers,
-        bookings,
-        settings,
-        activeToast,
-        t,
-        login,
-        logout,
-        setLanguage,
-        toggleWorkerOnlineStatus,
-        quickBookWorker,
-        updateBookingStatus,
-        toggleAppSounds,
-        toggleVoiceGuidance,
-        speakText,
-        closeToast,
-      }}
-    >
+    <AppContext.Provider value={{
+      user, isLoggedIn: !!user, loginUser, logoutUser,
+      providers, bookings, isLoading, refreshProviders, refreshBookings,
+      bookProvider,
+      settings, setLanguage, toggleSounds, toggleVoice,
+      toast, showToast, dismissToast,
+      translate,
+      userLocation, locationStatus, requestLocation,
+    }}>
       {children}
     </AppContext.Provider>
   );
 };
 
-export const useApp = () => {
-  const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useApp must be used within an AppProvider');
-  }
-  return context;
+export const useApp = (): AppContextType => {
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error('useApp must be used inside AppProvider');
+  return ctx;
 };

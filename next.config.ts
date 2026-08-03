@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import path from 'path';
 
 const isGithubActions = process.env.GITHUB_ACTIONS || false;
 const repoName = process.env.NEXT_PUBLIC_BASE_PATH || 'neighborly-trust';
@@ -13,6 +14,9 @@ const nextConfig: NextConfig = {
   },
   typescript: {
     ignoreBuildErrors: true,
+  },
+  turbopack: {
+    root: path.resolve(__dirname),
   },
 };
 
