@@ -2,7 +2,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { DEFAULT_OWNER_PHONE_NUMBERS, PRIMARY_SUPER_OWNER, OWNER_PHONES } from '../../lib/types';
-import { ShieldCheck, Volume2, VolumeX, Eye, EyeOff, ChevronLeft } from 'lucide-react';
+import { sendOtp, generateOtp } from '../../lib/sms';
+import { ShieldCheck, ChevronLeft, MessageSquare, Smartphone } from 'lucide-react';
 
 const LANGUAGES = [
   { code: 'en', label: 'English',    native: 'English'   },
@@ -30,7 +31,8 @@ export default function LoginScreen() {
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(0);
-  const [showPhone, setShowPhone] = useState(false);
+  // 'sms' = sent to phone, 'screen' = shown in toast (dev mode)
+  const [otpMethod, setOtpMethod] = useState<'sms' | 'screen'>('screen');
   const otpRefs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -46,7 +48,7 @@ export default function LoginScreen() {
 
   const selectedLang = LANGUAGES.find(l => l.code === settings.language) ?? LANGUAGES[0];
 
-  const handleSendOtp = () => {
+  const handleSendOtp = async () => {
     setError('');
     const cleanName = name.trim();
     const cleanPhone = phone.replace(/\D/g, '');
@@ -69,17 +71,27 @@ export default function LoginScreen() {
     }
 
     setLoading(true);
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const code = generateOtp();
     setGeneratedOtp(code);
 
-    setTimeout(() => {
-      setLoading(false);
-      setStep('otp');
-      setCountdown(30);
-      setOtp(['', '', '', '']);
-      showToast(`Your OTP is ${code}`, 'info');
-      setTimeout(() => otpRefs[0].current?.focus(), 100);
-    }, 500);
+    try {
+      const result = await sendOtp(cleanPhone, code);
+      setOtpMethod(result.ok && result.method === 'sms' ? 'sms' : 'screen');
+
+      if (result.method === 'screen') {
+        // Dev / demo mode — show OTP on screen
+        showToast(`Your OTP is: ${code}`, 'info');
+      }
+    } catch {
+      setOtpMethod('screen');
+      showToast(`Your OTP is: ${code}`, 'info');
+    }
+
+    setLoading(false);
+    setStep('otp');
+    setCountdown(30);
+    setOtp(['', '', '', '']);
+    setTimeout(() => otpRefs[0].current?.focus(), 100);
   };
 
   const handleOtpChange = (val: string, idx: number) => {
@@ -179,10 +191,21 @@ export default function LoginScreen() {
           <button onClick={() => setStep('phone')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, marginBottom: 20, padding: 0 }}>
             <ChevronLeft size={16} /> Back
           </button>
-          <h1 style={{ fontSize: 26, fontWeight: 900, color: 'white', margin: 0, letterSpacing: '-0.4px' }}>Enter OTP</h1>
+          <h1 style={{ fontSize: 26, fontWeight: 900, color: 'white', margin: 0, letterSpacing: '-0.4px' }}>Verify your number</h1>
           <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, marginTop: 6, fontWeight: 500 }}>
-            Sent to +91 {phone}
+            {otpMethod === 'sms'
+              ? `Code sent via SMS to +91 ${phone}`
+              : `Enter the code shown in the notification`
+            }
           </p>
+          {/* Delivery method badge */}
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, background: otpMethod === 'sms' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', border: `1px solid ${otpMethod === 'sms' ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`, borderRadius: 20, padding: '5px 12px' }}>
+            {otpMethod === 'sms' ? (
+              <><Smartphone size={12} color="#6EE7B7" /><span style={{ fontSize: 11, fontWeight: 700, color: '#6EE7B7' }}>Sent via SMS</span></>
+            ) : (
+              <><MessageSquare size={12} color="#FCD34D" /><span style={{ fontSize: 11, fontWeight: 700, color: '#FCD34D' }}>Check the notification above ↑</span></>
+            )}
+          </div>
         </div>
 
         <div style={{ padding: '28px 24px' }}>
@@ -190,6 +213,17 @@ export default function LoginScreen() {
             <p style={{ textAlign: 'center', fontSize: 13, color: '#64748B', fontWeight: 500, marginBottom: 20 }}>
               {selectedLang.native === 'English' ? 'Enter the 4-digit code' : `OTP ನಮೂದಿಸಿ`}
             </p>
+
+            {/* Dev-mode info box */}
+            {otpMethod === 'screen' && (
+              <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>💡</span>
+                <div>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: '#92400E', margin: '0 0 2px' }}>Demo Mode</p>
+                  <p style={{ fontSize: 11, color: '#B45309', margin: 0, fontWeight: 500 }}>Your OTP was shown in the notification at the top. Add a Fast2SMS API key to send real SMS.</p>
+                </div>
+              </div>
+            )}
 
             <div className="otp-group" style={{ marginBottom: 20 }}>
               {otp.map((digit, idx) => (
