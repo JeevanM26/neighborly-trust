@@ -75,6 +75,8 @@ interface AppContextType {
 
   // Actions
   bookProvider: (provider: Provider, notes?: string) => Promise<void>;
+  addWorkerProfile: (newProvider: Provider) => void;
+  updateBookingStatus: (bookingId: string, status: 'pending' | 'accepted' | 'completed' | 'declined') => void;
 
   // Settings
   settings: AppSettings;
@@ -257,6 +259,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(T[settings.language]?.bookingSuccess ?? 'Booking Confirmed! 🎉', 'success');
   }, [user, settings.language, showToast]);
 
+  // ── Add Worker Profile (Post Job) ──
+  const addWorkerProfile = useCallback((newProvider: Provider) => {
+    setProviders(prev => [newProvider, ...prev]);
+  }, []);
+
+  // ── Update Booking Status ──
+  const updateBookingStatus = useCallback((bookingId: string, status: 'pending' | 'accepted' | 'completed' | 'declined') => {
+    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status } : b));
+    showToast(`Job status updated to ${status.toUpperCase()}!`, 'info');
+  }, [showToast]);
+
   // ── Settings ──
   const setLanguage = useCallback((lang: LanguageCode) => {
     setSettings(s => ({ ...s, language: lang }));
@@ -276,7 +289,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider value={{
       user, isLoggedIn: !!user, loginUser, logoutUser,
       providers, bookings, isLoading, refreshProviders, refreshBookings,
-      bookProvider,
+      bookProvider, addWorkerProfile, updateBookingStatus,
       settings, setLanguage, toggleSounds, toggleVoice,
       toast, showToast, dismissToast,
       translate,

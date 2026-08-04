@@ -8,12 +8,13 @@ import LoginScreen from '../components/screens/LoginScreen';
 import HomeScreen from '../components/screens/HomeScreen';
 import MapScreen from '../components/screens/MapScreen';
 import BookingsScreen from '../components/screens/BookingsScreen';
+import WorkerScreen from '../components/screens/WorkerScreen';
 import ProfileScreen from '../components/screens/ProfileScreen';
 import OwnerPanel from '../components/screens/OwnerPanel';
 import ProviderDetail from '../components/screens/ProviderDetail';
 
 // Icons (lucide-react)
-import { Home, Map, BookOpen, User, ShieldCheck } from 'lucide-react';
+import { Home, Map, BookOpen, Briefcase, User, ShieldCheck } from 'lucide-react';
 
 // ─── Toast ─────────────────────────────────────────────────
 function Toast() {
@@ -32,12 +33,13 @@ function Toast() {
 }
 
 // ─── Bottom Navigation ─────────────────────────────────────
-type Tab = 'home' | 'map' | 'bookings' | 'profile';
+type Tab = 'home' | 'map' | 'bookings' | 'worker' | 'profile';
 
 const NAV_ITEMS: { key: Tab; label: string; icon: any; activeIcon?: any }[] = [
   { key: 'home',     label: 'Home',     icon: Home      },
   { key: 'map',      label: 'Map',      icon: Map       },
   { key: 'bookings', label: 'Bookings', icon: BookOpen  },
+  { key: 'worker',   label: 'Worker',   icon: Briefcase },
   { key: 'profile',  label: 'Profile',  icon: User      },
 ];
 
@@ -108,13 +110,6 @@ function AuthenticatedApp() {
     setTab('bookings');
   };
 
-  // Owner panel — triggered by triple-tap on "Profile" or if owner role
-  const handleProfileTabLongPress = () => {
-    if (user?.role === 'owner') {
-      setShowOwnerPanel(true);
-    }
-  };
-
   // If provider detail is open, show it full-screen
   if (selectedProvider) {
     return (
@@ -158,6 +153,10 @@ function AuthenticatedApp() {
 
       <div className="screen" hidden={tab !== 'bookings'}>
         <BookingsScreen />
+      </div>
+
+      <div className="screen" hidden={tab !== 'worker'}>
+        <WorkerScreen onJobPosted={() => setTab('home')} />
       </div>
 
       <div className="screen" hidden={tab !== 'profile'}>
