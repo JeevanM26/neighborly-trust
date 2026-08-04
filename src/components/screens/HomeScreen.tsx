@@ -427,7 +427,11 @@ export default function HomeScreen({
   }, [speakText, showToast]);
 
   // ── Speech Recognition ───────────────────────────────────
-  const toggleVoiceMic = useCallback(() => {
+  // Industry-standard fix for Chrome on Android:
+  // getUserMedia({audio:true}) must be called FIRST inside a user-gesture
+  // handler to trigger the browser permission dialog. SpeechRecognition.start()
+  // alone does NOT reliably show the mic prompt on Chrome mobile.
+  const toggleVoiceMic = useCallback(async () => {
     if (isRecording) {
       try { recognitionRef.current?.stop(); } catch {}
       setIsRecording(false);
@@ -436,10 +440,38 @@ export default function HomeScreen({
 
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
-      showToast('Speech Recognition not supported. Use Google Chrome or the Neighborly app.', 'error');
+      showToast('Voice search not supported. Please use Google Chrome.', 'error');
       return;
     }
 
+    // ── Step 1: Explicitly request mic permission via getUserMedia ──
+    // This is the ONLY reliable way to trigger the Chrome Android permission
+    // dialog. Without this, recognition.start() silently fails with
+    // 'not-allowed' and the browser never shows the permission prompt.
+    let micStream: MediaStream | null = null;
+    try {
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+    } catch (permErr: any) {
+      console.warn('[VoiceSearch] getUserMedia denied:', permErr);
+      if (
+        permErr?.name === 'NotAllowedError' ||
+        permErr?.name === 'PermissionDeniedError'
+      ) {
+        showToast(
+          'Microphone access denied. In Chrome, tap the 🔒 lock icon in the address bar → Site settings → Microphone → Allow.',
+          'error'
+        );
+      } else if (permErr?.name === 'NotFoundError') {
+        showToast('No microphone found on this device.', 'error');
+      } else {
+        showToast(`Mic error: ${permErr?.message ?? 'Unknown error'}`, 'error');
+      }
+      return;
+    }
+
+    // ── Step 2: Start SpeechRecognition (permission is now granted) ──
     try {
       try { recognitionRef.current?.abort(); } catch {}
 
@@ -463,7 +495,6 @@ export default function HomeScreen({
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
           if (result.isFinal) {
-            // Prefer the highest-confidence alternative
             const best = Array.from(result as any[])
               .reduce((a: any, b: any) => a.confidence >= b.confidence ? a : b);
             finalText += best.transcript;
@@ -472,47 +503,53 @@ export default function HomeScreen({
           }
         }
 
-        // Show interim text in the input box in real-time
         setRawQuery(finalText || interimText);
-
-        // Only commit on final recognised utterance
-        if (finalText) {
-          commitQuery(finalText.trim());
-        }
+        if (finalText) commitQuery(finalText.trim());
       };
 
       recognition.onerror = (event: any) => {
         console.warn('[VoiceSearch] error:', event.error);
         setIsRecording(false);
+        // Release mic stream on error
+        micStream?.getTracks().forEach(t => t.stop());
         switch (event.error) {
           case 'not-allowed':
           case 'service-not-allowed':
-            showToast('Microphone access denied. Allow mic in app settings.', 'error');
+            showToast(
+              'Microphone blocked. Tap the 🔒 lock icon → Microphone → Allow, then reload.',
+              'error'
+            );
             break;
           case 'no-speech':
-            showToast('No speech detected. Tap mic and try again.', 'info');
+            showToast('No speech detected. Tap 🎙️ and try again.', 'info');
             break;
           case 'network':
-            showToast('Network error. Check your internet connection.', 'error');
+            showToast('Network error during voice recognition. Check connection.', 'error');
             break;
           case 'aborted':
-            break; // user-triggered, no toast
+            break; // user-triggered stop, no toast needed
           default:
             showToast(`Voice error: ${event.error}`, 'error');
         }
       };
 
-      recognition.onend = () => setIsRecording(false);
+      recognition.onend = () => {
+        setIsRecording(false);
+        // Release mic stream when recognition ends (free hardware resource)
+        micStream?.getTracks().forEach(t => t.stop());
+      };
 
       recognition.start();
     } catch (err: any) {
-      console.error('[VoiceSearch] failed to start:', err);
+      console.error('[VoiceSearch] failed to start recognition:', err);
       setIsRecording(false);
+      micStream?.getTracks().forEach(t => t.stop());
       showToast(err?.message ?? 'Could not start microphone.', 'error');
     }
   }, [isRecording, currentLanguage.code, speakText, showToast, commitQuery]);
 
   // ── Clear search ─────────────────────────────────────────
+
   const clearSearch = useCallback(() => {
     setRawQuery('');
     setDebouncedQuery('');
