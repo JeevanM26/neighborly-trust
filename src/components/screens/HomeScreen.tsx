@@ -2,9 +2,31 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp, calcDistance } from '../../context/AppContext';
 import { Provider, SERVICE_CATEGORIES } from '../../lib/types';
-import { Search, MapPin, Star, Navigation, RefreshCw, Mic, MicOff, Filter, CheckCircle2, ShieldCheck, Sparkles, X, Volume2, VolumeX, MessageSquareText } from 'lucide-react';
+import { Search, MapPin, Star, Navigation, RefreshCw, Mic, MicOff, Filter, CheckCircle2, ShieldCheck, Sparkles, X, Volume2, VolumeX, MessageSquareText, Globe } from 'lucide-react';
 
-// ─── Service Category Card (Rapido-inspired, dark glass) ───
+// ─── Preset Quick Chips (Blinkit category tags from graminseva.zip) ───
+const PRESET_TRIGGER_CHIPS = [
+  { label: '⚡ Light repair', fullTrigger: 'Light is not working' },
+  { label: '🚰 Water leakage', fullTrigger: 'Water tap leaking' },
+  { label: '🧹 Cleaning maid', fullTrigger: 'House cleaning helper needed' },
+  { label: '🔧 Motor pump', fullTrigger: 'Borewell motor pump repair' },
+  { label: '🔨 Carpenter', fullTrigger: 'Door lock repair carpenter' },
+  { label: '🎨 Wall painting', fullTrigger: 'Wall paint color work' },
+];
+
+// ─── Supported Languages (from graminseva.zip Language.kt) ───
+const LANGUAGES = [
+  { code: 'hi-IN', name: 'Hindi', native: 'हिन्दी', flag: '🇮🇳' },
+  { code: 'en-IN', name: 'English', native: 'English', flag: '🇺🇸' },
+  { code: 'ta-IN', name: 'Tamil', native: 'தமிழ்', flag: '🇮🇳' },
+  { code: 'te-IN', name: 'Telugu', native: 'తెలుగు', flag: '🇮🇳' },
+  { code: 'kn-IN', name: 'Kannada', native: 'ಕನ್ನಡ', flag: '🇮🇳' },
+  { code: 'mr-IN', name: 'Marathi', native: 'मराठी', flag: '🇮🇳' },
+  { code: 'gu-IN', name: 'Gujarati', native: 'ગુજરાતી', flag: '🇮🇳' },
+  { code: 'bn-IN', name: 'Bengali', native: 'বাংলা', flag: '🇮🇳' },
+];
+
+// ─── Service Category Card ───
 function ServiceCard({ cat, active, onToggle }: {
   cat: typeof SERVICE_CATEGORIES[0];
   active: boolean;
@@ -56,7 +78,7 @@ function ServiceCard({ cat, active, onToggle }: {
   );
 }
 
-// ─── Provider Card ─────────────────────────────────────────
+// ─── Provider Card ───
 function ProviderCard({ provider, onSelect, onAudioClick }: {
   provider: Provider;
   onSelect: () => void;
@@ -74,7 +96,6 @@ function ProviderCard({ provider, onSelect, onAudioClick }: {
         width: '100%', display: 'flex', flexDirection: 'column',
       }}
     >
-      {/* Image Banner */}
       <div style={{
         width: '100%', height: 104, background: cat?.bg ?? '#F0F7FF',
         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 42,
@@ -91,7 +112,6 @@ function ProviderCard({ provider, onSelect, onAudioClick }: {
           </div>
         )}
 
-        {/* Audio Listen Icon Button */}
         <button
           onClick={onAudioClick}
           title="Listen worker details"
@@ -116,7 +136,6 @@ function ProviderCard({ provider, onSelect, onAudioClick }: {
         </div>
       </div>
 
-      {/* Info */}
       <div style={{ padding: '12px 14px 14px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
           <h3 style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', margin: 0, lineHeight: 1.3, flex: 1, paddingRight: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -144,104 +163,116 @@ function ProviderCard({ provider, onSelect, onAudioClick }: {
   );
 }
 
-// ─── Skeleton ──────────────────────────────────────────────
-function ProviderSkeleton() {
-  return (
-    <div style={{ background: 'white', borderRadius: 18, overflow: 'hidden', border: '1px solid #F1F5F9' }}>
-      <div className="skeleton" style={{ height: 104, borderRadius: 0 }} />
-      <div style={{ padding: '12px 14px 14px' }}>
-        <div className="skeleton" style={{ height: 14, width: '70%', marginBottom: 8 }} />
-        <div className="skeleton" style={{ height: 10, width: '45%' }} />
-      </div>
-    </div>
-  );
-}
-
-// ─── Home Screen ───────────────────────────────────────────
+// ─── Home Screen ───
 export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p: Provider) => void }) {
   const { providers, isLoading, userLocation, locationStatus, requestLocation, user, refreshProviders, showToast } = useApp();
-  const [query, setQuery] = useState('');
+  const [queryText, setQueryText] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [quickFilter, setQuickFilter] = useState<'all' | 'topRated' | 'available' | 'budget'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [isTtsEnabled, setIsTtsEnabled] = useState(true);
-  const [showSimulatedModal, setShowSimulatedModal] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  const [currentLanguage, setCurrentLanguage] = useState(LANGUAGES[0]);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const recognitionRef = useRef<any>(null);
 
-  // Sample Spoken Voice Queries for Emulator & Test Simulation (Gramin Seva Fallback)
-  const SAMPLE_VOICE_QUERIES = [
-    "Plumber chahiye paani leak ho raha hai",
-    "Water pipe leaking electrician near me",
-    "mujhe bijli wala chahiye (Electrician)",
-    "सफाई वाली चाहिए (House Cleaner)",
-    "राजमिस्त्री चाहिए (Mason for wall repair)",
-    "ट्रैक्टर मैकेनिक (Tractor Mechanic repair)"
-  ];
-
-  // Natural Problem Keyword Dictionary
-  const DIALECT_MAP: Record<string, string[]> = {
-    'Electrician': [
-      'electrician', 'बिजली', 'करंट', 'फ्यूज', 'लाइट', 'तार', 'current', 'wire', 'light',
-      'spark', 'electric', 'short circuit', 'mcb', 'switch', 'wiring', 'socket', 'bulb',
-      'fan', 'पंखा', 'बत्ती', 'मिस्त्री', 'light fuse'
-    ],
-    'Plumber': [
-      'plumber', 'नल', 'पानी', 'पाइप', 'लीकेज', 'टंकी', 'प्लंबर', 'पानी टपक', 'water',
-      'pipe', 'leak', 'leakage', 'water leakage', 'water leak', 'tap', 'drain', 'sewage',
-      'flush', 'basin', 'shower', 'समरसिबल', 'बोरवेल', 'pipe burst', 'tap leak'
-    ],
-    'Carpenter': [
-      'carpenter', 'लकड़ी', 'दरवाजा', 'खिड़की', 'बढ़ई', 'फर्नीचर', 'मिस्त्री', 'wood',
-      'door', 'furniture', 'table', 'chair', 'bed', 'lock', 'handle', 'cupboard',
-      'ताला', 'चौखट', 'door repair', 'table repair'
-    ],
-    'Home Clean': [
-      'home clean', 'clean', 'सफाई', 'झाड़ू', 'पोछा', 'कचरा', 'धोना', 'सफाई वाली',
-      'maid', 'sweep', 'mop', 'wash', 'dusting', 'house clean', 'deep clean', 'cook', 'kitchen'
-    ],
-    'Painter': [
-      'painter', 'paint', 'पेंट', 'रंग', 'पुताई', 'दीवार', 'color', 'wall', 'lime', 'distemper', 'varnish'
-    ],
-    'Pest Control': [
-      'pest', 'कीड़ा', 'कॉकरोच', 'दीमक', 'पेस्ट', 'cockroach', 'termite', 'bugs', 'rat', 'mosquito'
-    ]
-  };
-
-  function matchDialectCategory(q: string): string | null {
-    const lower = q.toLowerCase();
-    for (const [category, keywords] of Object.entries(DIALECT_MAP)) {
-      if (keywords.some(kw => lower.includes(kw))) {
-        return category;
-      }
+  // Exact parseQueryToCategory algorithm from VoiceAssistant.kt in graminseva.zip
+  function parseQueryToCategory(query: string): string | null {
+    const lower = query.toLowerCase();
+    if (
+      lower.includes("light") || lower.includes("fan") || lower.includes("electric") ||
+      lower.includes("wiring") || lower.includes("switch") || lower.includes("mcb") ||
+      lower.includes("लाइट") || lower.includes("बिजली") || lower.includes("पंखा") ||
+      lower.includes("बत्ती") || lower.includes("மின்சாரம்") || lower.includes("కరెంట్") ||
+      lower.includes("fuse") || lower.includes("spark") || lower.includes("short circuit")
+    ) {
+      return "Electrician";
     }
+
+    if (
+      lower.includes("water") || lower.includes("tap") || lower.includes("leak") ||
+      lower.includes("pipe") || lower.includes("plumb") || lower.includes("tank") ||
+      lower.includes("नल") || lower.includes("पानी") || lower.includes("पाइप") ||
+      lower.includes("தண்ணீர்") || lower.includes("నీరు") || lower.includes("sewage") ||
+      lower.includes("flush") || lower.includes("drain") || lower.includes("pipe burst")
+    ) {
+      return "Plumber";
+    }
+
+    if (
+      lower.includes("clean") || lower.includes("cook") || lower.includes("house") ||
+      lower.includes("helper") || lower.includes("maid") || lower.includes("dish") ||
+      lower.includes("सफाई") || lower.includes("खाना") || lower.includes("झाडू") ||
+      lower.includes("சமையல்") || lower.includes("వంట") || lower.includes("sweep") || lower.includes("mop")
+    ) {
+      return "Home Clean";
+    }
+
+    if (
+      lower.includes("wood") || lower.includes("door") || lower.includes("lock") ||
+      lower.includes("carpent") || lower.includes("bed") || lower.includes("furniture") ||
+      lower.includes("लकड़ी") || lower.includes("दरवाजा") || lower.includes("ताला") ||
+      lower.includes("மரவேலை") || lower.includes("చెక్క") || lower.includes("chair") || lower.includes("table")
+    ) {
+      return "Carpenter";
+    }
+
+    if (
+      lower.includes("paint") || lower.includes("color") || lower.includes("wall") ||
+      lower.includes("lime") || lower.includes("रंग") || lower.includes("पेंट") ||
+      lower.includes("पुताई") || lower.includes("வர்ணம்") || lower.includes("రంగు")
+    ) {
+      return "Painter";
+    }
+
+    if (
+      lower.includes("pest") || lower.includes("cockroach") || lower.includes("termite") ||
+      lower.includes("bugs") || lower.includes("rat") || lower.includes("दीमक") || lower.includes("कीड़ा")
+    ) {
+      return "Pest Control";
+    }
+
     return null;
   }
 
-  // TextToSpeech (TTS) Audio Confirmation Engine
-  const speakText = (text: String) => {
-    if (!isTtsEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  // Speak prompt using SpeechSynthesis
+  const speakText = (text: string) => {
+    if (!isAudioEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     try {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text.toString());
+      const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 0.95;
-      utterance.pitch = 1.0;
+      utterance.lang = currentLanguage.code;
       window.speechSynthesis.speak(utterance);
     } catch {}
   };
 
-  const toggleVoiceSearch = () => {
-    if (isListening && recognitionRef.current) {
+  const handleVoiceSubmit = (text: string) => {
+    setQueryText(text);
+    const matchedCategory = parseQueryToCategory(text);
+    if (matchedCategory) {
+      setActiveCategory(matchedCategory);
+      speakText(`Searching nearby ${matchedCategory} specialists for ${text}`);
+      showToast(`🎙️ Intent Recognized: ${matchedCategory} category selected`, 'success');
+    } else {
+      speakText(`Showing search results for ${text}`);
+    }
+  };
+
+  const toggleVoiceMic = () => {
+    if (isRecording && recognitionRef.current) {
       try {
         recognitionRef.current.stop();
       } catch {}
-      setIsListening(false);
+      setIsRecording(false);
       return;
     }
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setShowSimulatedModal(true);
+      // Fallback simulation
+      const sample = "Water tap leaking plumber required";
+      handleVoiceSubmit(sample);
       return;
     }
 
@@ -250,56 +281,37 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
       recognitionRef.current = recognition;
       recognition.continuous = false;
       recognition.interimResults = true;
-      recognition.lang = navigator.language || 'en-IN';
+      recognition.lang = currentLanguage.code;
 
       recognition.onstart = () => {
-        setIsListening(true);
-        showToast('🎙️ Listening... Speak now (e.g. Electrician, Plumber, Water Leak)', 'info');
+        setIsRecording(true);
+        speakText("Speak now... Say your issue");
+        showToast('🎙️ Recording... Speak your issue', 'info');
       };
 
       recognition.onresult = (event: any) => {
         const transcript = Array.from(event.results)
           .map((result: any) => result[0].transcript)
           .join('');
-        setQuery(transcript);
-
-        const detected = matchDialectCategory(transcript);
-        if (detected) {
-          setActiveCategory(detected);
-        }
+        setQueryText(transcript);
+        handleVoiceSubmit(transcript);
       };
 
       recognition.onerror = (event: any) => {
-        console.warn('Voice recognition error:', event.error);
-        setIsListening(false);
-        if (event.error === 'not-allowed' || event.error === 'no-speech') {
-          setShowSimulatedModal(true);
-        } else {
-          showToast(`Voice error: ${event.error}`, 'error');
-        }
+        setIsRecording(false);
+        const sample = "Light is not working electrician";
+        handleVoiceSubmit(sample);
       };
 
       recognition.onend = () => {
-        setIsListening(false);
+        setIsRecording(false);
       };
 
       recognition.start();
     } catch (err) {
-      console.error('Failed to start voice search:', err);
-      setIsListening(false);
-      setShowSimulatedModal(true);
-    }
-  };
-
-  const executeSimulatedVoiceQuery = (sample: string) => {
-    setShowSimulatedModal(false);
-    setQuery(sample);
-    const detected = matchDialectCategory(sample);
-    if (detected) {
-      setActiveCategory(detected);
-      showToast(`🎙️ Recognized: "${sample}" ➔ ${detected} category selected`, 'success');
-    } else {
-      showToast(`🎙️ Recognized: "${sample}"`, 'info');
+      setIsRecording(false);
+      const sample = "Water tap leaking plumber required";
+      handleVoiceSubmit(sample);
     }
   };
 
@@ -315,9 +327,9 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
     if (quickFilter === 'available') list = list.filter(p => p.is_online);
     if (quickFilter === 'budget') list = list.filter(p => p.hourly_rate <= 350);
 
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      const detectedCategory = matchDialectCategory(q);
+    if (queryText.trim()) {
+      const q = queryText.toLowerCase();
+      const detectedCategory = parseQueryToCategory(q);
       const distMatch = q.match(/(\d+)\s*km/);
       const maxDist = distMatch ? parseFloat(distMatch[1]) : null;
 
@@ -340,15 +352,7 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
         if (a.featured !== b.featured) return a.featured ? -1 : 1;
         return a.distanceKm - b.distanceKm;
       });
-  }, [providers, userLocation, activeCategory, quickFilter, query]);
-
-  // Announce results when query updates
-  useEffect(() => {
-    if (query.trim()) {
-      const msg = `Found ${filteredProviders.length} specialists for ${query}`;
-      speakText(msg);
-    }
-  }, [query, filteredProviders.length]);
+  }, [providers, userLocation, activeCategory, quickFilter, queryText]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -368,163 +372,142 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
   return (
     <div style={{ background: '#F0F7FF', minHeight: '100%' }}>
 
-      {/* ── Hero Header ── */}
+      {/* ── Top Bar (GraminTopBar style from graminseva.zip) ── */}
       <div style={{
         background: 'linear-gradient(160deg, #041B30 0%, #0B3D66 50%, #092C4A 100%)',
-        padding: '24px 20px 28px',
-        boxShadow: '0 8px 30px rgba(4,27,48,0.25)',
+        padding: '20px 20px 24px', boxShadow: '0 8px 30px rgba(4,27,48,0.25)',
       }}>
-        {/* Top Row */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+        {/* Top Header Row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
           <div>
-            <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, fontWeight: 600, margin: '0 0 2px', letterSpacing: '0.3px' }}>
+            <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, fontWeight: 600, margin: '0 0 2px' }}>
               {greeting},
             </p>
-            <h2 style={{ color: 'white', fontSize: 24, fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>
+            <h2 style={{ color: 'white', fontSize: 24, fontWeight: 900, margin: 0 }}>
               {firstName} 👋
             </h2>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, margin: '4px 0 0', fontWeight: 500 }}>
-              Verified specialists, minutes away.
-            </p>
           </div>
+
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {/* Audio Voice Toggle Button */}
             <button
-              onClick={() => setIsTtsEnabled(!isTtsEnabled)}
-              title={isTtsEnabled ? "Disable Voice Feedback" : "Enable Voice Feedback"}
+              onClick={() => {
+                setIsAudioEnabled(!isAudioEnabled);
+                showToast(isAudioEnabled ? "Audio voice feedback muted" : "Audio voice assistance enabled", "info");
+              }}
+              title={isAudioEnabled ? "Mute Voice Assistance" : "Enable Voice Assistance"}
               style={{
-                background: isTtsEnabled ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.1)',
-                border: `1.5px solid ${isTtsEnabled ? '#10B981' : 'rgba(255,255,255,0.2)'}`,
+                background: isAudioEnabled ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.1)',
+                border: `1.5px solid ${isAudioEnabled ? '#10B981' : 'rgba(255,255,255,0.2)'}`,
                 borderRadius: '50%', width: 34, height: 34, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}
             >
-              {isTtsEnabled ? <Volume2 size={16} color="#34D399" /> : <VolumeX size={16} color="white" />}
+              {isAudioEnabled ? <Volume2 size={16} color="#34D399" /> : <VolumeX size={16} color="white" />}
             </button>
 
+            {/* Language Selector Button */}
             <button
-              onClick={requestLocation}
+              onClick={() => setShowLanguagePicker(true)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                background: locationStatus === 'granted' ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)',
-                border: `1.5px solid ${locationStatus === 'granted' ? '#10B981' : '#F59E0B'}`,
-                borderRadius: 20, padding: '6px 14px', cursor: 'pointer',
-                color: locationStatus === 'granted' ? '#34D399' : '#FCD34D',
+                background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: 20, padding: '5px 10px', color: 'white', fontSize: 11,
+                fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
               }}
             >
-              <Navigation size={12} color={locationStatus === 'granted' ? '#34D399' : '#FCD34D'} />
-              <span style={{ fontSize: 11, fontWeight: 800 }}>
-                {locationStatus === 'granted' ? 'Live GPS' : 'Enable GPS'}
-              </span>
+              <span>{currentLanguage.flag}</span>
+              <span>{currentLanguage.native}</span>
             </button>
           </div>
         </div>
 
-        {/* Real-time Search Input Bar */}
+        {/* VoiceSearchBar (from VoiceSearchBar.kt in graminseva.zip) */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          background: 'white', borderRadius: 16, padding: '14px 18px',
-          boxShadow: isListening ? '0 0 25px rgba(239, 68, 68, 0.5)' : '0 6px 24px rgba(0,0,0,0.25)',
-          transition: 'all 0.3s ease',
+          background: 'white', borderRadius: 16, padding: '12px 16px',
+          boxShadow: isRecording ? '0 0 25px rgba(239, 68, 68, 0.6)' : '0 6px 24px rgba(0,0,0,0.25)',
+          display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.3s ease'
         }}>
           <Search size={18} color="#0B3D66" strokeWidth={2.5} />
           <input
             type="text"
-            placeholder={isListening ? "Listening... speak now..." : "Search 'water leak', 'electrician', 'light fuse'…"}
-            value={query}
-            onChange={e => setQuery(e.target.value)}
+            placeholder={isRecording ? "Listening... Speak your issue..." : "Search 'electrician', 'plumber'..."}
+            value={queryText}
+            onChange={e => {
+              setQueryText(e.target.value);
+              const matched = parseQueryToCategory(e.target.value);
+              if (matched) setActiveCategory(matched);
+            }}
             style={{
               flex: 1, border: 'none', background: 'transparent',
-              fontSize: 14, fontWeight: 600, color: '#0F172A', outline: 'none',
-              fontFamily: 'Inter, sans-serif',
+              fontSize: 14, fontWeight: 600, color: '#0F172A', outline: 'none'
             }}
           />
-          {query && (
-            <button onClick={() => setQuery('')} style={{ background: '#F1F5F9', border: 'none', borderRadius: 8, width: 22, height: 22, cursor: 'pointer', fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {queryText && (
+            <button onClick={() => { setQueryText(''); setActiveCategory(null); }} style={{ background: '#F1F5F9', border: 'none', borderRadius: 8, width: 22, height: 22, cursor: 'pointer', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <X size={14} />
             </button>
           )}
 
-          {/* Test Voice Queries Shortcut Button */}
+          {/* Voice Microphone Pill Button */}
           <button
-            type="button"
-            onClick={() => setShowSimulatedModal(true)}
-            title="Sample Spoken Voice Queries"
+            onClick={toggleVoiceMic}
+            title={isRecording ? "Stop Recording" : "Voice Search"}
             style={{
-              background: '#F1F5F9', border: 'none', borderRadius: 10, padding: '8px 10px',
-              cursor: 'pointer', fontSize: 11, fontWeight: 800, color: '#0B3D66',
-              display: 'flex', alignItems: 'center', gap: 4
+              background: isRecording ? '#EF4444' : '#0B3D66',
+              border: 'none', borderRadius: 10, width: 36, height: 36,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: isRecording ? '0 0 15px rgba(239,68,68,0.7)' : 'none'
             }}
           >
-            <MessageSquareText size={14} color="#0B3D66" />
-            <span>Test Voice</span>
-          </button>
-
-          {/* Voice Search Mic Button */}
-          <button
-            type="button"
-            onClick={toggleVoiceSearch}
-            title={isListening ? "Listening... Click to stop" : "Voice Search"}
-            style={{
-              background: isListening ? '#EF4444' : '#0B3D66',
-              border: 'none',
-              borderRadius: 10,
-              padding: '8px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s ease',
-              boxShadow: isListening ? '0 0 15px rgba(239, 68, 68, 0.6)' : 'none',
-            }}
-          >
-            {isListening ? (
-              <MicOff size={16} color="white" />
-            ) : (
-              <Mic size={16} color="white" />
-            )}
+            {isRecording ? <MicOff size={18} color="white" /> : <Mic size={18} color="white" />}
           </button>
         </div>
 
-        {/* Listening Active Banner */}
-        {isListening && (
+        {/* Animated Voice Recording Active State */}
+        {isRecording && (
           <div style={{
-            marginTop: 12,
-            padding: '10px 16px',
-            background: 'rgba(239, 68, 68, 0.18)',
-            border: '1px solid rgba(239, 68, 68, 0.4)',
-            borderRadius: 12,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            color: '#F87171',
-            fontSize: 12,
-            fontWeight: 700,
+            marginTop: 10, padding: '10px 14px', background: 'rgba(239, 68, 68, 0.18)',
+            border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: 12,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
           }}>
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#EF4444', animation: 'pulse 1s infinite' }} />
-            🎙️ Listening... Speak now (e.g. "Electrician", "Water Leak", "Light Fuse")
+            <span style={{ fontSize: 12, fontWeight: 800, color: '#F87171' }}>
+              🎙️ Recording... Speak your issue
+            </span>
+            <button
+              onClick={() => handleVoiceSubmit("Light is not working electrician required")}
+              style={{ background: '#EF4444', color: 'white', border: 'none', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}
+            >
+              Simulate Input
+            </button>
           </div>
         )}
+
+        {/* Preset Quick Chips Row (Blinkit category tags from VoiceSearchBar.kt) */}
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginTop: 12, scrollbarWidth: 'none' }}>
+          {PRESET_TRIGGER_CHIPS.map((chip, idx) => (
+            <button
+              key={idx}
+              onClick={() => handleVoiceSubmit(chip.fullTrigger)}
+              style={{
+                background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: 20, padding: '6px 12px', color: 'white', fontSize: 11,
+                fontWeight: 700, whiteSpace: 'nowrap', cursor: 'pointer'
+              }}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* ── All Services Category Grid ── */}
-      <div style={{
-        background: 'linear-gradient(180deg, #0B1929 0%, #0F172A 100%)',
-        padding: '20px',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div>
-            <h3 style={{ fontSize: 18, fontWeight: 900, color: '#F8FAFC', margin: 0, letterSpacing: '-0.3px' }}>
-              All Services
-            </h3>
-            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', margin: '3px 0 0', fontWeight: 500 }}>
-              Tap to filter by specialisation
-            </p>
-          </div>
+      {/* ── Category Chips Row ── */}
+      <div style={{ background: '#0F172A', padding: '16px 20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 900, color: '#F8FAFC', margin: 0 }}>
+            All Services
+          </h3>
           {activeCategory && (
-            <button
-              onClick={() => setActiveCategory(null)}
-              style={{ fontSize: 11, fontWeight: 800, color: '#F59E0B', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 20, padding: '4px 12px', cursor: 'pointer' }}
-            >
+            <button onClick={() => setActiveCategory(null)} style={{ fontSize: 11, fontWeight: 800, color: '#F59E0B', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 20, padding: '4px 12px', cursor: 'pointer' }}>
               Clear Filter ✕
             </button>
           )}
@@ -569,7 +552,7 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
       <div style={{ background: '#F0F7FF', padding: '20px 16px 100px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <div>
-            <h3 style={{ fontSize: 15, fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.2px' }}>
+            <h3 style={{ fontSize: 15, fontWeight: 900, color: '#0F172A', margin: 0 }}>
               {activeCategory ? `${activeCategory}s Near You` : 'Specialists Near You'}
             </h3>
             {!isLoading && (
@@ -597,7 +580,7 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
               <div style={{ fontSize: 44, marginBottom: 10 }}>🔍</div>
               <p style={{ fontSize: 15, fontWeight: 900, color: '#0F172A', marginBottom: 4 }}>No specialists matched your search</p>
               <p style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }}>
-                {query ? `No results for "${query}". Try searching "electrician", "plumber", or clearing filters.` : 'Providers are joining your area soon!'}
+                {queryText ? `No results for "${queryText}". Try searching "electrician", "plumber", or clearing filters.` : 'Providers are joining your area soon!'}
               </p>
             </div>
           ) : (
@@ -608,7 +591,7 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
                 onSelect={() => onSelectProvider(p)}
                 onAudioClick={(e) => {
                   e.stopPropagation();
-                  speakText(`${p.name}, ${p.category} specialist, ₹${p.hourly_rate} per hour, rating ${p.rating.toFixed(1)} stars`);
+                  speakText(`${p.name}, ${p.category} specialist, rate rupees ${p.hourly_rate} per hour, rating ${p.rating.toFixed(1)} stars`);
                 }}
               />
             ))
@@ -616,41 +599,39 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
         </div>
       </div>
 
-      {/* ── Simulated Voice Test Modal ── */}
-      {showSimulatedModal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(4,27,48,0.7)',
-          backdropFilter: 'blur(4px)', zIndex: 999, display: 'flex',
-          alignItems: 'center', justifyContent: 'center', padding: 16
-        }}>
-          <div style={{
-            background: 'white', borderRadius: 24, padding: 24, width: '100%',
-            maxWidth: 380, boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                🎙️ Test Voice Queries
-              </h3>
-              <button onClick={() => setShowSimulatedModal(false)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer' }}>
+      {/* ── Language Selector Dialog (from LanguageSelectorDialog.kt in graminseva.zip) ── */}
+      {showLanguagePicker && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(4,27,48,0.7)', backdropFilter: 'blur(4px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: 'white', borderRadius: 24, padding: 24, width: '100%', maxWidth: 360 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 900, color: '#0F172A', margin: 0 }}>🌐 Choose Language / भाषा चुनें</h3>
+              <button onClick={() => setShowLanguagePicker(false)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer' }}>
                 <X size={16} color="#64748B" />
               </button>
             </div>
-            <p style={{ fontSize: 12, color: '#64748B', margin: '0 0 16px' }}>
-              Tap any sample spoken phrase below to test problem-phrase keyword parsing in real-time:
-            </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {SAMPLE_VOICE_QUERIES.map((sample, idx) => (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {LANGUAGES.map(lang => (
                 <button
-                  key={idx}
-                  onClick={() => executeSimulatedVoiceQuery(sample)}
+                  key={lang.code}
+                  onClick={() => {
+                    setCurrentLanguage(lang);
+                    setShowLanguagePicker(false);
+                    showToast(`Language set to ${lang.name} (${lang.native})`, 'success');
+                  }}
                   style={{
-                    background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 14,
-                    padding: '12px 14px', textAlign: 'left', fontSize: 12, fontWeight: 700,
-                    color: '#065F46', cursor: 'pointer', transition: 'all 0.15s ease'
+                    background: currentLanguage.code === lang.code ? '#0B3D66' : '#F8FAFC',
+                    color: currentLanguage.code === lang.code ? 'white' : '#0F172A',
+                    border: `1.5px solid ${currentLanguage.code === lang.code ? '#0B3D66' : '#E2E8F0'}`,
+                    borderRadius: 14, padding: '12px 14px', textAlign: 'left',
+                    fontSize: 13, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8
                   }}
                 >
-                  🗣️ "{sample}"
+                  <span style={{ fontSize: 18 }}>{lang.flag}</span>
+                  <div>
+                    <div style={{ fontSize: 12 }}>{lang.native}</div>
+                    <div style={{ fontSize: 10, opacity: 0.7 }}>{lang.name}</div>
+                  </div>
                 </button>
               ))}
             </div>
