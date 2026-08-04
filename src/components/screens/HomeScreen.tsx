@@ -137,32 +137,38 @@ function ProviderSkeleton() {
 
 // ─── Home Screen ───────────────────────────────────────────
 export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p: Provider) => void }) {
-  const { providers, isLoading, userLocation, locationStatus, requestLocation, user, refreshProviders } = useApp();
+  const { providers, isLoading, userLocation, locationStatus, requestLocation, user, refreshProviders, showToast } = useApp();
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   const toggleVoiceSearch = () => {
-    if (isListening) {
+    if (isListening && recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
       setIsListening(false);
       return;
     }
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert('Voice search is not supported in this browser. Please try Chrome, Edge, or Safari.');
+      showToast('Voice search is not supported in this browser. Please try Chrome, Edge, or Safari.', 'error');
       return;
     }
 
     try {
       const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
       recognition.continuous = false;
       recognition.interimResults = true;
-      recognition.lang = 'en-IN';
+      recognition.lang = navigator.language || 'en-IN';
 
       recognition.onstart = () => {
         setIsListening(true);
+        showToast('🎙️ Listening... Speak now (e.g. Electrician, Plumber, Light, Leak)', 'info');
       };
 
       recognition.onresult = (event: any) => {
@@ -170,11 +176,23 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
           .map((result: any) => result[0].transcript)
           .join('');
         setQuery(transcript);
+
+        const detected = matchDialectCategory(transcript);
+        if (detected) {
+          setActiveCategory(detected);
+        }
       };
 
       recognition.onerror = (event: any) => {
         console.warn('Voice recognition error:', event.error);
         setIsListening(false);
+        if (event.error === 'not-allowed') {
+          showToast('Microphone access denied. Please allow mic access in your browser site settings.', 'error');
+        } else if (event.error === 'no-speech') {
+          showToast('No speech detected. Please tap mic and speak again.', 'info');
+        } else {
+          showToast(`Voice error: ${event.error}`, 'error');
+        }
       };
 
       recognition.onend = () => {
@@ -185,6 +203,7 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
     } catch (err) {
       console.error('Failed to start voice search:', err);
       setIsListening(false);
+      showToast('Unable to launch microphone.', 'error');
     }
   };
 
