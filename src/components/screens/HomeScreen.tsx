@@ -212,12 +212,31 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
   };
 
   const DIALECT_MAP: Record<string, string[]> = {
-    'Electrician': ['electrician', 'बिजली', 'करंट', 'फ्यूज', 'लाइट', 'तार', 'current', 'wire', 'light', 'spark', 'electric'],
-    'Plumber': ['plumber', 'नल', 'पानी', 'पाइप', 'लीकेज', 'टंकी', 'प्लंबर', 'पानी टपक', 'water', 'pipe', 'leak', 'tap'],
-    'Carpenter': ['carpenter', 'लकड़ी', 'दरवाजा', 'खिड़की', 'बढ़ई', 'फर्नीचर', 'मिस्त्री', 'wood', 'door', 'furniture', 'table', 'chair'],
-    'Home Clean': ['home clean', 'clean', 'सफाई', 'झाड़ू', 'पोछा', 'कचरा', 'धोना', 'सफाई वाली', 'maid', 'sweep', 'mop', 'wash'],
-    'Painter': ['painter', 'paint', 'पेंट', 'रंग', 'पुताई', 'दीवार', 'color', 'wall'],
-    'Pest Control': ['pest', 'कीड़ा', 'कॉकरोच', 'दीमक', 'पेस्ट', 'cockroach', 'termite', 'bugs']
+    'Electrician': [
+      'electrician', 'बिजली', 'करंट', 'फ्यूज', 'लाइट', 'तार', 'current', 'wire', 'light',
+      'spark', 'electric', 'short circuit', 'mcb', 'switch', 'wiring', 'socket', 'bulb',
+      'fan', 'पंखा', 'बत्ती', 'मिस्त्री', 'light fuse'
+    ],
+    'Plumber': [
+      'plumber', 'नल', 'पानी', 'पाइप', 'लीकेज', 'टंकी', 'प्लंबर', 'पानी टपक', 'water',
+      'pipe', 'leak', 'leakage', 'water leakage', 'water leak', 'tap', 'drain', 'sewage',
+      'flush', 'basin', 'shower', 'समरसिबल', 'बोरवेल', 'pipe burst', 'tap leak'
+    ],
+    'Carpenter': [
+      'carpenter', 'लकड़ी', 'दरवाजा', 'खिड़की', 'बढ़ई', 'फर्नीचर', 'मिस्त्री', 'wood',
+      'door', 'furniture', 'table', 'chair', 'bed', 'lock', 'handle', 'cupboard',
+      'ताला', 'चौखट', 'door repair', 'table repair'
+    ],
+    'Home Clean': [
+      'home clean', 'clean', 'सफाई', 'झाड़ू', 'पोछा', 'कचरा', 'धोना', 'सफाई वाली',
+      'maid', 'sweep', 'mop', 'wash', 'dusting', 'house clean', 'deep clean', 'cook', 'kitchen'
+    ],
+    'Painter': [
+      'painter', 'paint', 'पेंट', 'रंग', 'पुताई', 'दीवार', 'color', 'wall', 'lime', 'distemper', 'varnish'
+    ],
+    'Pest Control': [
+      'pest', 'कीड़ा', 'कॉकरोच', 'दीमक', 'पेस्ट', 'cockroach', 'termite', 'bugs', 'rat', 'mosquito'
+    ]
   };
 
   function matchDialectCategory(q: string): string | null {
