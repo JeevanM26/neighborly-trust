@@ -106,8 +106,150 @@ function parseQueryToCategory(query: string): string | null {
 }
 
 // ─────────────────────────────────────────────────────────────
+// YOUTUBE-STYLE VOICE SEARCH OVERLAY
+// ─────────────────────────────────────────────────────────────
+type VoiceState = 'listening' | 'processing' | 'done' | 'error';
+
+function VoiceSearchOverlay({
+  state,
+  transcript,
+  detectedCategory,
+  onCancel,
+}: {
+  state: VoiceState;
+  transcript: string;
+  detectedCategory: string | null;
+  onCancel: () => void;
+}) {
+  const BAR_DELAYS = ['0ms', '120ms', '60ms', '180ms', '90ms'];
+  const BAR_COLORS = ['#3B82F6', '#60A5FA', '#93C5FD', '#60A5FA', '#3B82F6'];
+
+  const statusText =
+    state === 'listening'  ? 'Listening…'      :
+    state === 'processing' ? 'Processing…'      :
+    state === 'error'      ? 'Tap mic to retry' : '';
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Voice search"
+      onClick={e => { if (e.target === e.currentTarget) onCancel(); }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9998,
+        background: 'rgba(4,10,20,0.96)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        padding: '40px 24px',
+        animation: 'fadeIn 0.2s ease',
+      }}
+    >
+      <button
+        onClick={onCancel}
+        aria-label="Cancel voice search"
+        style={{
+          position: 'absolute', top: 20, right: 20,
+          background: 'rgba(255,255,255,0.12)', border: 'none',
+          borderRadius: '50%', width: 40, height: 40, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <X size={20} color="white" />
+      </button>
+
+      <p style={{
+        color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 700,
+        letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 48,
+      }}>
+        Speak in any language
+      </p>
+
+      {/* Animated waveform bars */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, height: 72, marginBottom: 40 }}>
+        {BAR_DELAYS.map((delay, i) => (
+          <div key={i} style={{
+            width: 5, borderRadius: 3,
+            background: state === 'listening' ? BAR_COLORS[i] : 'rgba(255,255,255,0.2)',
+            height: state === 'listening' ? 36 : 8,
+            animation: state === 'listening'
+              ? `voiceBar 0.8s ease-in-out ${delay} infinite alternate`
+              : 'none',
+            transition: 'height 0.3s ease, background 0.3s ease',
+          }} />
+        ))}
+      </div>
+
+      {/* Mic icon circle */}
+      <div style={{
+        width: 80, height: 80, borderRadius: '50%',
+        background: state === 'error' ? 'rgba(239,68,68,0.15)' :
+          state === 'listening' ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.08)',
+        border: `2px solid ${state === 'error' ? '#EF4444' :
+          state === 'listening' ? '#3B82F6' : 'rgba(255,255,255,0.2)'}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        marginBottom: 28,
+        boxShadow: state === 'listening'
+          ? '0 0 0 12px rgba(59,130,246,0.08), 0 0 0 24px rgba(59,130,246,0.04)'
+          : 'none',
+        transition: 'all 0.3s ease',
+      }}>
+        <Mic size={32} color={
+          state === 'error' ? '#EF4444' :
+          state === 'listening' ? '#60A5FA' : 'rgba(255,255,255,0.5)'
+        } />
+      </div>
+
+      <p style={{ color: state === 'error' ? '#F87171' : 'rgba(255,255,255,0.6)',
+        fontSize: 14, fontWeight: 600, marginBottom: 16, minHeight: 20 }}>
+        {statusText}
+      </p>
+
+      {/* Live transcript */}
+      <div style={{ minHeight: 56, maxWidth: 320, textAlign: 'center', padding: '0 12px' }}>
+        {transcript ? (
+          <p style={{
+            color: 'white', fontSize: 22, fontWeight: 700,
+            lineHeight: 1.4, margin: 0, animation: 'fadeInUp 0.15s ease',
+          }}>
+            &ldquo;{transcript}&rdquo;
+          </p>
+        ) : state === 'listening' ? (
+          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14, margin: 0 }}>
+            Try: &ldquo;light not working&rdquo; or &ldquo;पानी लीक हो रहा है&rdquo;
+          </p>
+        ) : null}
+      </div>
+
+      {/* Detected category badge */}
+      {detectedCategory && (
+        <div style={{
+          marginTop: 24,
+          background: 'rgba(59,130,246,0.2)',
+          border: '1px solid rgba(59,130,246,0.4)',
+          borderRadius: 24, padding: '8px 20px',
+          animation: 'fadeInUp 0.3s ease',
+        }}>
+          <p style={{ color: '#93C5FD', fontSize: 13, fontWeight: 800, margin: 0 }}>
+            ✅ Matched: {detectedCategory}
+          </p>
+        </div>
+      )}
+
+      <p style={{
+        position: 'absolute', bottom: 48,
+        color: 'rgba(255,255,255,0.25)', fontSize: 12, fontWeight: 500,
+      }}>
+        Tap outside to cancel
+      </p>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
 // PROVIDER SKELETON
 // ─────────────────────────────────────────────────────────────
+
 function ProviderSkeleton() {
   return (
     <div style={{
@@ -340,6 +482,11 @@ export default function HomeScreen({
   const [greeting,        setGreeting]        = useState('Good day');
   const [micPulse,        setMicPulse]        = useState(false);
   const [showMicHelp,     setShowMicHelp]     = useState(false);
+  // YouTube-style voice overlay
+  const [voiceOverlay,    setVoiceOverlay]    = useState(false);
+  const [voiceState,      setVoiceState]      = useState<VoiceState>('listening');
+  const [liveTranscript,  setLiveTranscript]  = useState('');
+  const [liveCategory,    setLiveCategory]    = useState<string | null>(null);
 
   const recognitionRef    = useRef<any>(null);
   const inputRef           = useRef<HTMLInputElement>(null);
@@ -397,6 +544,16 @@ export default function HomeScreen({
     } catch { /* non-fatal */ }
   }, [isAudioEnabled, currentLanguage.code]);
 
+  // ── Close voice overlay helper ────────────────────────────
+  const closeVoiceOverlay = useCallback(() => {
+    try { recognitionRef.current?.stop(); } catch {}
+    setVoiceOverlay(false);
+    setVoiceState('listening');
+    setLiveTranscript('');
+    setLiveCategory(null);
+    setIsRecording(false);
+  }, []);
+
   // ── Commit a search query (voice or chip) ────────────────
   // This is the single entry point for ALL search submissions:
   // typed Enter, chip tap, voice final result, history tap.
@@ -428,7 +585,7 @@ export default function HomeScreen({
       return deduped.slice(0, MAX_HISTORY_ITEMS);
     });
     setShowHistory(false);
-  }, [speakText, showToast]);
+  }, [speakText, showToast, setLiveCategory]);
 
   // ── Speech Recognition ───────────────────────────────────
   // Full production mic flow:
@@ -439,10 +596,15 @@ export default function HomeScreen({
   // This covers the case where Chrome silently blocked mic in a previous session.
   const toggleVoiceMic = useCallback(async () => {
     if (isRecording) {
-      try { recognitionRef.current?.stop(); } catch {}
-      setIsRecording(false);
+      closeVoiceOverlay();
       return;
     }
+
+    // Open the YouTube-style overlay immediately on tap
+    setVoiceOverlay(true);
+    setVoiceState('listening');
+    setLiveTranscript('');
+    setLiveCategory(null);
 
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
@@ -506,8 +668,8 @@ export default function HomeScreen({
 
       recognition.onstart = () => {
         setIsRecording(true);
+        setVoiceState('listening');
         speakText('Listening');
-        showToast('🎙️ Listening… speak your issue', 'info');
       };
 
       // ── Reset fallback refs for this session ──────────────
@@ -529,41 +691,54 @@ export default function HomeScreen({
           }
         }
 
-        // Always show what we heard in the input box (live feedback)
-        setRawQuery(finalText || interimText);
+        const heard = finalText || interimText;
 
-        // Store interim as fallback in case Chrome never fires isFinal:true
+        // Update overlay live transcript
+        setLiveTranscript(heard);
+        setRawQuery(heard);
+
+        // Show detected category inside the overlay in real-time
+        if (heard) {
+          const intent = detectIntent(heard);
+          setLiveCategory(intent?.category ?? null);
+        }
+
+        // Store interim as fallback (Chrome Android fix)
         if (interimText) lastInterimRef.current = interimText;
 
         if (finalText) {
           finalCommittedRef.current = true;
+          setVoiceState('processing');
           commitQuery(finalText.trim());
+          // Auto-close overlay after showing matched result
+          setTimeout(() => closeVoiceOverlay(), 900);
         }
       };
 
       recognition.onerror = (event: any) => {
         console.warn('[VoiceSearch] error:', event.error);
         setIsRecording(false);
-        // Release mic stream on error
         micStream?.getTracks().forEach(t => t.stop());
         switch (event.error) {
           case 'not-allowed':
           case 'service-not-allowed':
-            showToast(
-              'Microphone blocked. Tap the 🔒 lock icon → Microphone → Allow, then reload.',
-              'error'
-            );
+            closeVoiceOverlay();
+            setShowMicHelp(true);
             break;
           case 'no-speech':
-            showToast('No speech detected. Tap 🎙️ and try again.', 'info');
-            break;
-          case 'network':
-            showToast('Network error during voice recognition. Check connection.', 'error');
+            setVoiceState('error');
+            setLiveTranscript('');
+            // Auto-recover: go back to listening hint after 1.5s
+            setTimeout(() => {
+              setVoiceState('listening');
+            }, 1500);
             break;
           case 'aborted':
-            break; // user-triggered stop, no toast needed
+            closeVoiceOverlay();
+            break;
           default:
-            showToast(`Voice error: ${event.error}`, 'error');
+            setVoiceState('error');
+            setTimeout(() => closeVoiceOverlay(), 2000);
         }
       };
 
@@ -571,14 +746,16 @@ export default function HomeScreen({
         setIsRecording(false);
         micStream?.getTracks().forEach(t => t.stop());
 
-        // ── Chrome Android fallback ──────────────────────────────────
-        // Chrome on Android often fires onend without ever producing a
-        // isFinal:true result — only interim results. If that happened,
-        // use the last interim transcript as the query (industry standard).
+        // Chrome Android fallback: commit interim if no final was received
         if (!finalCommittedRef.current && lastInterimRef.current.trim()) {
+          setVoiceState('processing');
           commitQuery(lastInterimRef.current.trim());
+          setTimeout(() => closeVoiceOverlay(), 900);
+        } else if (!finalCommittedRef.current) {
+          // Nothing was heard at all
+          setVoiceState('error');
+          setTimeout(() => closeVoiceOverlay(), 2000);
         }
-        // Reset for next session
         lastInterimRef.current    = '';
         finalCommittedRef.current = false;
       };
@@ -1234,12 +1411,25 @@ export default function HomeScreen({
         </div>
       )}
 
+      {/* ── YOUTUBE-STYLE VOICE SEARCH OVERLAY ──────────── */}
+      {voiceOverlay && (
+        <VoiceSearchOverlay
+          state={voiceState}
+          transcript={liveTranscript}
+          detectedCategory={liveCategory}
+          onCancel={closeVoiceOverlay}
+        />
+      )}
+
       {/* ── Global Styles ──────────────────────────────── */}
       <style>{`
-        @keyframes spin     { from { transform: rotate(0deg); }    to { transform: rotate(360deg); } }
-        @keyframes shimmer  { 0%,100% { background-position: 200% 0; } 50% { background-position: -200% 0; } }
-        @keyframes micPulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
-        @keyframes slideUp  { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes spin      { from { transform: rotate(0deg); }    to { transform: rotate(360deg); } }
+        @keyframes shimmer   { 0%,100% { background-position: 200% 0; } 50% { background-position: -200% 0; } }
+        @keyframes micPulse  { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
+        @keyframes slideUp   { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeIn    { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeInUp  { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes voiceBar  { from { height: 6px; } to { height: 52px; } }
         input[type="search"]::-webkit-search-cancel-button { display: none; }
       `}</style>
     </div>
