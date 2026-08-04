@@ -339,6 +339,7 @@ export default function HomeScreen({
   const [searchHistory,   setSearchHistory]   = useState<string[]>([]);
   const [greeting,        setGreeting]        = useState('Good day');
   const [micPulse,        setMicPulse]        = useState(false);
+  const [showMicHelp,     setShowMicHelp]     = useState(false);
 
   const recognitionRef = useRef<any>(null);
   const inputRef       = useRef<HTMLInputElement>(null);
@@ -427,10 +428,12 @@ export default function HomeScreen({
   }, [speakText, showToast]);
 
   // ── Speech Recognition ───────────────────────────────────
-  // Industry-standard fix for Chrome on Android:
-  // getUserMedia({audio:true}) must be called FIRST inside a user-gesture
-  // handler to trigger the browser permission dialog. SpeechRecognition.start()
-  // alone does NOT reliably show the mic prompt on Chrome mobile.
+  // Full production mic flow:
+  // 1. Check permission state via Permissions API (no dialog shown).
+  // 2a. 'denied'  → show in-app help modal (Chrome remembered a past block).
+  // 2b. 'prompt'  → call getUserMedia to trigger the browser permission dialog.
+  // 2c. 'granted' → skip dialog, go straight to SpeechRecognition.
+  // This covers the case where Chrome silently blocked mic in a previous session.
   const toggleVoiceMic = useCallback(async () => {
     if (isRecording) {
       try { recognitionRef.current?.stop(); } catch {}
@@ -444,10 +447,30 @@ export default function HomeScreen({
       return;
     }
 
-    // ── Step 1: Explicitly request mic permission via getUserMedia ──
-    // This is the ONLY reliable way to trigger the Chrome Android permission
-    // dialog. Without this, recognition.start() silently fails with
-    // 'not-allowed' and the browser never shows the permission prompt.
+    // ── Step 1: Check existing permission state (Permissions API) ──
+    // This tells us what Chrome already knows WITHOUT showing any dialog.
+    // 'denied'  = user/Chrome previously blocked mic → show help modal
+    // 'granted' = already allowed → skip getUserMedia, go to recognition
+    // 'prompt'  = first time → call getUserMedia to trigger the dialog
+    let permState: PermissionState = 'prompt';
+    try {
+      if (typeof navigator !== 'undefined' && navigator.permissions) {
+        const result = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+        permState = result.state;
+      }
+    } catch { /* Permissions API not supported, fall through to getUserMedia */ }
+
+    if (permState === 'denied') {
+      // Chrome remembers a past block — getUserMedia will throw silently without
+      // ever showing the permission dialog. Show our in-app guide instead.
+      setShowMicHelp(true);
+      return;
+    }
+
+    // ── Step 2: Request mic permission via getUserMedia ──────────────
+    // Only reached when state is 'prompt' (first time) or 'granted'.
+    // getUserMedia inside a user-gesture handler IS the correct trigger for
+    // Chrome's "Allow microphone?" popup on Android.
     let micStream: MediaStream | null = null;
     try {
       if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
@@ -455,18 +478,14 @@ export default function HomeScreen({
       }
     } catch (permErr: any) {
       console.warn('[VoiceSearch] getUserMedia denied:', permErr);
-      if (
-        permErr?.name === 'NotAllowedError' ||
-        permErr?.name === 'PermissionDeniedError'
-      ) {
-        showToast(
-          'Microphone access denied. In Chrome, tap the 🔒 lock icon in the address bar → Site settings → Microphone → Allow.',
-          'error'
-        );
-      } else if (permErr?.name === 'NotFoundError') {
+      const name = permErr?.name ?? '';
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        // User tapped "Deny" on the fresh dialog → show help
+        setShowMicHelp(true);
+      } else if (name === 'NotFoundError') {
         showToast('No microphone found on this device.', 'error');
       } else {
-        showToast(`Mic error: ${permErr?.message ?? 'Unknown error'}`, 'error');
+        showToast(`Mic error: ${permErr?.message ?? 'Unknown'}`, 'error');
       }
       return;
     }
@@ -1046,13 +1065,159 @@ export default function HomeScreen({
         </div>
       )}
 
+      {/* ── MIC HELP MODAL ────────────────────────────── */}
+      {/* Shown when Chrome has previously blocked mic (no dialog would appear). */}
+      {showMicHelp && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Enable microphone guide"
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(4,27,48,0.82)',
+            backdropFilter: 'blur(6px)',
+            zIndex: 9999,
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            padding: '0 0 0 0',
+          }}
+          onClick={e => { if (e.target === e.currentTarget) setShowMicHelp(false); }}
+        >
+          <div style={{
+            background: 'white', borderRadius: '24px 24px 0 0',
+            padding: '20px 20px 36px', width: '100%', maxWidth: 480,
+            boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
+            animation: 'slideUp 0.25s ease',
+          }}>
+            {/* Handle bar */}
+            <div style={{ width: 40, height: 4, background: '#CBD5E1', borderRadius: 2, margin: '0 auto 16px', display: 'block' }} />
+
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div>
+                <div style={{ fontSize: 28, marginBottom: 4 }}>🎙️</div>
+                <h3 style={{ fontSize: 17, fontWeight: 900, color: '#0F172A', margin: 0 }}>
+                  Enable Microphone
+                </h3>
+                <p style={{ fontSize: 12, color: '#64748B', margin: '3px 0 0', fontWeight: 500 }}>
+                  Chrome blocked the mic from a previous visit. Follow these steps to allow it:
+                </p>
+              </div>
+              <button
+                onClick={() => setShowMicHelp(false)}
+                aria-label="Close"
+                style={{
+                  background: '#F1F5F9', border: 'none', borderRadius: '50%',
+                  width: 30, height: 30, cursor: 'pointer', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <X size={16} color="#64748B" />
+              </button>
+            </div>
+
+            {/* Steps */}
+            {[
+              {
+                num: '1',
+                title: 'Open Chrome Settings',
+                desc: 'Tap the ⋮ three-dot menu (top right of Chrome) → Settings',
+                icon: '⚙️',
+              },
+              {
+                num: '2',
+                title: 'Go to Site Settings',
+                desc: 'Settings → Privacy and security → Site settings → Microphone',
+                icon: '🔐',
+              },
+              {
+                num: '3',
+                title: 'Find & unblock this site',
+                desc: 'Under "Blocked" — tap jeevanm26.github.io → change to Allow',
+                icon: '✅',
+              },
+              {
+                num: '4',
+                title: 'Reload and tap mic again',
+                desc: 'Come back here, reload the page, and tap 🎙️',
+                icon: '🔄',
+              },
+            ].map((step, i) => (
+              <div key={i} style={{
+                display: 'flex', gap: 14, marginBottom: 14,
+                padding: '12px 14px', background: '#F8FAFC',
+                borderRadius: 14, border: '1px solid #E2E8F0',
+              }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: '#0B3D66', color: 'white',
+                  fontSize: 14, fontWeight: 900,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  {step.num}
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', marginBottom: 2 }}>
+                    {step.icon} {step.title}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#64748B', fontWeight: 500, lineHeight: 1.5 }}>
+                    {step.desc}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+              <button
+                onClick={() => {
+                  // Deep-link into Chrome's site settings for this origin
+                  window.open('chrome://settings/content/microphone', '_blank');
+                }}
+                style={{
+                  flex: 1, background: '#0B3D66', color: 'white',
+                  border: 'none', borderRadius: 14, padding: '13px',
+                  fontSize: 13, fontWeight: 900, cursor: 'pointer',
+                }}
+              >
+                Open Chrome Settings →
+              </button>
+              <button
+                onClick={() => {
+                  setShowMicHelp(false);
+                  // After user says they fixed it, retry immediately
+                  setTimeout(() => toggleVoiceMic(), 300);
+                }}
+                style={{
+                  background: '#F0F7FF', color: '#0B3D66',
+                  border: '1.5px solid #0B3D66', borderRadius: 14, padding: '13px 16px',
+                  fontSize: 13, fontWeight: 900, cursor: 'pointer',
+                }}
+              >
+                Try again
+              </button>
+            </div>
+
+            {/* Android system settings note */}
+            <p style={{
+              textAlign: 'center', fontSize: 11, color: '#94A3B8',
+              marginTop: 14, fontWeight: 500,
+            }}>
+              Also check: Android Settings → Apps → Chrome → Permissions → Microphone → Allow
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Global Styles ──────────────────────────────── */}
       <style>{`
         @keyframes spin     { from { transform: rotate(0deg); }    to { transform: rotate(360deg); } }
         @keyframes shimmer  { 0%,100% { background-position: 200% 0; } 50% { background-position: -200% 0; } }
         @keyframes micPulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
+        @keyframes slideUp  { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         input[type="search"]::-webkit-search-cancel-button { display: none; }
       `}</style>
     </div>
   );
 }
+
