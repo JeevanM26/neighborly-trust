@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp, calcDistance } from '../../context/AppContext';
 import { Provider, SERVICE_CATEGORIES } from '../../lib/types';
-import { Search, MapPin, Star, Navigation, RefreshCw, Mic, MicOff, Filter, CheckCircle2, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { Search, MapPin, Star, Navigation, RefreshCw, Mic, MicOff, Filter, CheckCircle2, ShieldCheck, Sparkles, X, Volume2, VolumeX, MessageSquareText } from 'lucide-react';
 
 // ─── Service Category Card (Rapido-inspired, dark glass) ───
 function ServiceCard({ cat, active, onToggle }: {
@@ -57,7 +57,11 @@ function ServiceCard({ cat, active, onToggle }: {
 }
 
 // ─── Provider Card ─────────────────────────────────────────
-function ProviderCard({ provider, onSelect }: { provider: Provider; onSelect: () => void }) {
+function ProviderCard({ provider, onSelect, onAudioClick }: {
+  provider: Provider;
+  onSelect: () => void;
+  onAudioClick: (e: React.MouseEvent) => void;
+}) {
   const cat = SERVICE_CATEGORIES.find(c => c.key === provider.category);
 
   return (
@@ -86,6 +90,21 @@ function ProviderCard({ provider, onSelect }: { provider: Provider; onSelect: ()
             <Sparkles size={10} color="#92400E" /> TOP PRO
           </div>
         )}
+
+        {/* Audio Listen Icon Button */}
+        <button
+          onClick={onAudioClick}
+          title="Listen worker details"
+          style={{
+            position: 'absolute', top: 8, right: 8,
+            background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%',
+            width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+          }}
+        >
+          <Volume2 size={14} color="#0B3D66" />
+        </button>
+
         <div style={{
           position: 'absolute', bottom: 8, right: 8,
           background: provider.is_online ? 'rgba(16,185,129,0.92)' : 'rgba(100,116,139,0.8)',
@@ -146,71 +165,21 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
   const [quickFilter, setQuickFilter] = useState<'all' | 'topRated' | 'available' | 'budget'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isTtsEnabled, setIsTtsEnabled] = useState(true);
+  const [showSimulatedModal, setShowSimulatedModal] = useState(false);
   const recognitionRef = useRef<any>(null);
 
-  const toggleVoiceSearch = () => {
-    if (isListening && recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch {}
-      setIsListening(false);
-      return;
-    }
+  // Sample Spoken Voice Queries for Emulator & Test Simulation (Gramin Seva Fallback)
+  const SAMPLE_VOICE_QUERIES = [
+    "Plumber chahiye paani leak ho raha hai",
+    "Water pipe leaking electrician near me",
+    "mujhe bijli wala chahiye (Electrician)",
+    "सफाई वाली चाहिए (House Cleaner)",
+    "राजमिस्त्री चाहिए (Mason for wall repair)",
+    "ट्रैक्टर मैकेनिक (Tractor Mechanic repair)"
+  ];
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      showToast('Voice search is not supported in this browser. Please try Chrome, Edge, or Safari.', 'error');
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      recognitionRef.current = recognition;
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.lang = navigator.language || 'en-IN';
-
-      recognition.onstart = () => {
-        setIsListening(true);
-        showToast('🎙️ Listening... Speak now (e.g. Electrician, Plumber, Light, Leak)', 'info');
-      };
-
-      recognition.onresult = (event: any) => {
-        const transcript = Array.from(event.results)
-          .map((result: any) => result[0].transcript)
-          .join('');
-        setQuery(transcript);
-
-        const detected = matchDialectCategory(transcript);
-        if (detected) {
-          setActiveCategory(detected);
-        }
-      };
-
-      recognition.onerror = (event: any) => {
-        console.warn('Voice recognition error:', event.error);
-        setIsListening(false);
-        if (event.error === 'not-allowed') {
-          showToast('Microphone access denied. Please allow mic access in your browser site settings.', 'error');
-        } else if (event.error === 'no-speech') {
-          showToast('No speech detected. Please tap mic and speak again.', 'info');
-        } else {
-          showToast(`Voice error: ${event.error}`, 'error');
-        }
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognition.start();
-    } catch (err) {
-      console.error('Failed to start voice search:', err);
-      setIsListening(false);
-      showToast('Unable to launch microphone.', 'error');
-    }
-  };
-
+  // Natural Problem Keyword Dictionary
   const DIALECT_MAP: Record<string, string[]> = {
     'Electrician': [
       'electrician', 'बिजली', 'करंट', 'फ्यूज', 'लाइट', 'तार', 'current', 'wire', 'light',
@@ -248,6 +217,91 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
     }
     return null;
   }
+
+  // TextToSpeech (TTS) Audio Confirmation Engine
+  const speakText = (text: String) => {
+    if (!isTtsEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text.toString());
+      utterance.rate = 0.95;
+      utterance.pitch = 1.0;
+      window.speechSynthesis.speak(utterance);
+    } catch {}
+  };
+
+  const toggleVoiceSearch = () => {
+    if (isListening && recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setShowSimulatedModal(true);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = navigator.language || 'en-IN';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        showToast('🎙️ Listening... Speak now (e.g. Electrician, Plumber, Water Leak)', 'info');
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0].transcript)
+          .join('');
+        setQuery(transcript);
+
+        const detected = matchDialectCategory(transcript);
+        if (detected) {
+          setActiveCategory(detected);
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn('Voice recognition error:', event.error);
+        setIsListening(false);
+        if (event.error === 'not-allowed' || event.error === 'no-speech') {
+          setShowSimulatedModal(true);
+        } else {
+          showToast(`Voice error: ${event.error}`, 'error');
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (err) {
+      console.error('Failed to start voice search:', err);
+      setIsListening(false);
+      setShowSimulatedModal(true);
+    }
+  };
+
+  const executeSimulatedVoiceQuery = (sample: string) => {
+    setShowSimulatedModal(false);
+    setQuery(sample);
+    const detected = matchDialectCategory(sample);
+    if (detected) {
+      setActiveCategory(detected);
+      showToast(`🎙️ Recognized: "${sample}" ➔ ${detected} category selected`, 'success');
+    } else {
+      showToast(`🎙️ Recognized: "${sample}"`, 'info');
+    }
+  };
 
   const filteredProviders = useMemo(() => {
     let list = providers.map(p => ({
@@ -288,6 +342,14 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
       });
   }, [providers, userLocation, activeCategory, quickFilter, query]);
 
+  // Announce results when query updates
+  useEffect(() => {
+    if (query.trim()) {
+      const msg = `Found ${filteredProviders.length} specialists for ${query}`;
+      speakText(msg);
+    }
+  }, [query, filteredProviders.length]);
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await refreshProviders();
@@ -325,24 +387,39 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
               Verified specialists, minutes away.
             </p>
           </div>
-          <button
-            onClick={requestLocation}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              background: locationStatus === 'granted' ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)',
-              border: `1.5px solid ${locationStatus === 'granted' ? '#10B981' : '#F59E0B'}`,
-              borderRadius: 20, padding: '6px 14px', cursor: 'pointer',
-              color: locationStatus === 'granted' ? '#34D399' : '#FCD34D',
-            }}
-          >
-            <Navigation size={12} color={locationStatus === 'granted' ? '#34D399' : '#FCD34D'} />
-            <span style={{ fontSize: 11, fontWeight: 800 }}>
-              {locationStatus === 'granted' ? 'Live GPS' : 'Enable GPS'}
-            </span>
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              onClick={() => setIsTtsEnabled(!isTtsEnabled)}
+              title={isTtsEnabled ? "Disable Voice Feedback" : "Enable Voice Feedback"}
+              style={{
+                background: isTtsEnabled ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.1)',
+                border: `1.5px solid ${isTtsEnabled ? '#10B981' : 'rgba(255,255,255,0.2)'}`,
+                borderRadius: '50%', width: 34, height: 34, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}
+            >
+              {isTtsEnabled ? <Volume2 size={16} color="#34D399" /> : <VolumeX size={16} color="white" />}
+            </button>
+
+            <button
+              onClick={requestLocation}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: locationStatus === 'granted' ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)',
+                border: `1.5px solid ${locationStatus === 'granted' ? '#10B981' : '#F59E0B'}`,
+                borderRadius: 20, padding: '6px 14px', cursor: 'pointer',
+                color: locationStatus === 'granted' ? '#34D399' : '#FCD34D',
+              }}
+            >
+              <Navigation size={12} color={locationStatus === 'granted' ? '#34D399' : '#FCD34D'} />
+              <span style={{ fontSize: 11, fontWeight: 800 }}>
+                {locationStatus === 'granted' ? 'Live GPS' : 'Enable GPS'}
+              </span>
+            </button>
+          </div>
         </div>
 
-        {/* Real-time Search Input */}
+        {/* Real-time Search Input Bar */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
           background: 'white', borderRadius: 16, padding: '14px 18px',
@@ -352,7 +429,7 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
           <Search size={18} color="#0B3D66" strokeWidth={2.5} />
           <input
             type="text"
-            placeholder={isListening ? "Listening... speak now..." : "Search electrician, plumber, cleaner, price…"}
+            placeholder={isListening ? "Listening... speak now..." : "Search 'water leak', 'electrician', 'light fuse'…"}
             value={query}
             onChange={e => setQuery(e.target.value)}
             style={{
@@ -366,6 +443,21 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
               <X size={14} />
             </button>
           )}
+
+          {/* Test Voice Queries Shortcut Button */}
+          <button
+            type="button"
+            onClick={() => setShowSimulatedModal(true)}
+            title="Sample Spoken Voice Queries"
+            style={{
+              background: '#F1F5F9', border: 'none', borderRadius: 10, padding: '8px 10px',
+              cursor: 'pointer', fontSize: 11, fontWeight: 800, color: '#0B3D66',
+              display: 'flex', alignItems: 'center', gap: 4
+            }}
+          >
+            <MessageSquareText size={14} color="#0B3D66" />
+            <span>Test Voice</span>
+          </button>
 
           {/* Voice Search Mic Button */}
           <button
@@ -409,7 +501,7 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
             fontWeight: 700,
           }}>
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#EF4444', animation: 'pulse 1s infinite' }} />
-            🎙️ Listening... Speak now (e.g. "Electrician", "Plumber", "Light")
+            🎙️ Listening... Speak now (e.g. "Electrician", "Water Leak", "Light Fuse")
           </div>
         )}
       </div>
@@ -510,11 +602,61 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
             </div>
           ) : (
             filteredProviders.map(p => (
-              <ProviderCard key={p.id} provider={p} onSelect={() => onSelectProvider(p)} />
+              <ProviderCard
+                key={p.id}
+                provider={p}
+                onSelect={() => onSelectProvider(p)}
+                onAudioClick={(e) => {
+                  e.stopPropagation();
+                  speakText(`${p.name}, ${p.category} specialist, ₹${p.hourly_rate} per hour, rating ${p.rating.toFixed(1)} stars`);
+                }}
+              />
             ))
           )}
         </div>
       </div>
+
+      {/* ── Simulated Voice Test Modal ── */}
+      {showSimulatedModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(4,27,48,0.7)',
+          backdropFilter: 'blur(4px)', zIndex: 999, display: 'flex',
+          alignItems: 'center', justifyContent: 'center', padding: 16
+        }}>
+          <div style={{
+            background: 'white', borderRadius: 24, padding: 24, width: '100%',
+            maxWidth: 380, boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                🎙️ Test Voice Queries
+              </h3>
+              <button onClick={() => setShowSimulatedModal(false)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer' }}>
+                <X size={16} color="#64748B" />
+              </button>
+            </div>
+            <p style={{ fontSize: 12, color: '#64748B', margin: '0 0 16px' }}>
+              Tap any sample spoken phrase below to test problem-phrase keyword parsing in real-time:
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {SAMPLE_VOICE_QUERIES.map((sample, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => executeSimulatedVoiceQuery(sample)}
+                  style={{
+                    background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 14,
+                    padding: '12px 14px', textAlign: 'left', fontSize: 12, fontWeight: 700,
+                    color: '#065F46', cursor: 'pointer', transition: 'all 0.15s ease'
+                  }}
+                >
+                  🗣️ "{sample}"
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
