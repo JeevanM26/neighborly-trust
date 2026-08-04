@@ -341,9 +341,12 @@ export default function HomeScreen({
   const [micPulse,        setMicPulse]        = useState(false);
   const [showMicHelp,     setShowMicHelp]     = useState(false);
 
-  const recognitionRef = useRef<any>(null);
-  const inputRef       = useRef<HTMLInputElement>(null);
-  const debounceTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recognitionRef    = useRef<any>(null);
+  const inputRef           = useRef<HTMLInputElement>(null);
+  const debounceTimer      = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Chrome Android fix: track last interim & whether final was committed
+  const lastInterimRef     = useRef<string>('');
+  const finalCommittedRef  = useRef<boolean>(false);
 
   // ── Time-based greeting ──────────────────────────────────
   useEffect(() => {
@@ -507,6 +510,10 @@ export default function HomeScreen({
         showToast('🎙️ Listening… speak your issue', 'info');
       };
 
+      // ── Reset fallback refs for this session ──────────────
+      lastInterimRef.current    = '';
+      finalCommittedRef.current = false;
+
       recognition.onresult = (event: any) => {
         let finalText   = '';
         let interimText = '';
@@ -522,8 +529,16 @@ export default function HomeScreen({
           }
         }
 
+        // Always show what we heard in the input box (live feedback)
         setRawQuery(finalText || interimText);
-        if (finalText) commitQuery(finalText.trim());
+
+        // Store interim as fallback in case Chrome never fires isFinal:true
+        if (interimText) lastInterimRef.current = interimText;
+
+        if (finalText) {
+          finalCommittedRef.current = true;
+          commitQuery(finalText.trim());
+        }
       };
 
       recognition.onerror = (event: any) => {
@@ -554,8 +569,18 @@ export default function HomeScreen({
 
       recognition.onend = () => {
         setIsRecording(false);
-        // Release mic stream when recognition ends (free hardware resource)
         micStream?.getTracks().forEach(t => t.stop());
+
+        // ── Chrome Android fallback ──────────────────────────────────
+        // Chrome on Android often fires onend without ever producing a
+        // isFinal:true result — only interim results. If that happened,
+        // use the last interim transcript as the query (industry standard).
+        if (!finalCommittedRef.current && lastInterimRef.current.trim()) {
+          commitQuery(lastInterimRef.current.trim());
+        }
+        // Reset for next session
+        lastInterimRef.current    = '';
+        finalCommittedRef.current = false;
       };
 
       recognition.start();
