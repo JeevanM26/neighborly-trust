@@ -148,22 +148,19 @@ function AuthenticatedApp() {
       <Toast />
 
       {/* Screens */}
-      <div className="screen" style={{ display: tab === 'home' ? 'block' : 'none' }}>
+      <div className="screen" hidden={tab !== 'home'}>
         <HomeScreen onSelectProvider={handleSelectProvider} />
       </div>
 
-      <div className="screen" style={{ display: tab === 'map' ? 'block' : 'none' }}>
+      <div className="screen" hidden={tab !== 'map'}>
         <MapScreen onSelectProvider={handleSelectProvider} />
       </div>
 
-      <div className="screen" style={{ display: tab === 'bookings' ? 'block' : 'none' }}>
+      <div className="screen" hidden={tab !== 'bookings'}>
         <BookingsScreen />
       </div>
 
-      <div
-        className="screen"
-        style={{ display: tab === 'profile' ? 'block' : 'none' }}
-      >
+      <div className="screen" hidden={tab !== 'profile'}>
         {/* Owner panel entry button */}
         {user?.role === 'owner' && tab === 'profile' && !showOwnerPanel && (
           <div style={{

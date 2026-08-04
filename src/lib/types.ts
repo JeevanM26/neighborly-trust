@@ -70,6 +70,7 @@ export interface AppSettings {
 // ─── Owner Config ─────────────────────────────────────────
 export const PRIMARY_SUPER_OWNER = '7975182162';
 export const OWNER_PHONES: string[] = ['7975182162', '8867269712'];
+export const OWNER_PHONE_NUMBERS = OWNER_PHONES;
 // Alias used in LoginScreen
 export const DEFAULT_OWNER_PHONE_NUMBERS = OWNER_PHONES;
 

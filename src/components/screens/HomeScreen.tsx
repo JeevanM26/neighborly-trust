@@ -1,8 +1,8 @@
 'use client';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp, calcDistance } from '../../context/AppContext';
 import { Provider, SERVICE_CATEGORIES } from '../../lib/types';
-import { Search, MapPin, Star, Navigation, RefreshCw, ChevronRight, Zap } from 'lucide-react';
+import { Search, MapPin, Star, Navigation, RefreshCw, ChevronRight, Zap, Mic, MicOff } from 'lucide-react';
 
 // ─── Service Category Card (Rapido-inspired, dark glass) ───
 function ServiceCard({ cat, active, onToggle }: {
@@ -141,6 +141,71 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+
+  const toggleVoiceSearch = () => {
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Voice search is not supported in this browser. Please try Chrome, Edge, or Safari.');
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-IN';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0].transcript)
+          .join('');
+        setQuery(transcript);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn('Voice recognition error:', event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (err) {
+      console.error('Failed to start voice search:', err);
+      setIsListening(false);
+    }
+  };
+
+const DIALECT_MAP: Record<string, string[]> = {
+  'Electrician': ['electrician', 'बिजली', 'करंट', 'फ्यूज', 'लाइट', 'तार', 'current', 'wire', 'light', 'spark', 'electric'],
+  'Plumber': ['plumber', 'नल', 'पानी', 'पाइप', 'लीकेज', 'टंकी', 'प्लंबर', 'पानी टपक', 'water', 'pipe', 'leak', 'tap'],
+  'Carpenter': ['carpenter', 'लकड़ी', 'दरवाजा', 'खिड़की', 'बढ़ई', 'फर्नीचर', 'मिस्त्री', 'wood', 'door', 'furniture', 'table', 'chair'],
+  'Home Clean': ['home clean', 'clean', 'सफाई', 'झाड़ू', 'पोछा', 'कचरा', 'धोना', 'सफाई वाली', 'maid', 'sweep', 'mop', 'wash'],
+  'Painter': ['painter', 'paint', 'पेंट', 'रंग', 'पुताई', 'दीवार', 'color', 'wall'],
+  'Pest Control': ['pest', 'कीड़ा', 'कॉकरोच', 'दीमक', 'पेस्ट', 'cockroach', 'termite', 'bugs']
+};
+
+function matchDialectCategory(q: string): string | null {
+  const lower = q.toLowerCase();
+  for (const [category, keywords] of Object.entries(DIALECT_MAP)) {
+    if (keywords.some(kw => lower.includes(kw))) {
+      return category;
+    }
+  }
+  return null;
+}
 
   const filteredProviders = useMemo(() => {
     let list = providers.map(p => ({
@@ -150,11 +215,21 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
     if (activeCategory) list = list.filter(p => p.category === activeCategory);
     if (query.trim()) {
       const q = query.toLowerCase();
-      list = list.filter(p =>
-        p.name.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q)
-      );
+      const detectedCategory = matchDialectCategory(q);
+      const distMatch = q.match(/(\d+)\s*km/);
+      const maxDist = distMatch ? parseFloat(distMatch[1]) : null;
+
+      list = list.filter(p => {
+        if (maxDist !== null && p.distanceKm > maxDist) return false;
+        if (detectedCategory && p.category.toLowerCase() === detectedCategory.toLowerCase()) {
+          return true;
+        }
+        return (
+          p.name.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q)
+        );
+      });
     }
     return list
       .filter(p => !p.is_blacklisted)
@@ -170,9 +245,14 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
     setIsRefreshing(false);
   };
 
+  const [greeting, setGreeting] = useState('Good day');
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    setGreeting(hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening');
+  }, []);
+
   const firstName = user?.full_name?.split(' ')[0] ?? 'there';
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
   return (
     <div style={{ background: '#F0F7FF', minHeight: '100%' }}>
@@ -215,12 +295,13 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
           background: 'white', borderRadius: 14, padding: '13px 16px',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.2)',
+          boxShadow: isListening ? '0 0 20px rgba(239, 68, 68, 0.4)' : '0 4px 24px rgba(0,0,0,0.2)',
+          transition: 'all 0.3s ease',
         }}>
           <Search size={16} color="#94A3B8" strokeWidth={2.5} />
           <input
             type="text"
-            placeholder="Search electrician, plumber, cleaner…"
+            placeholder={isListening ? "Listening... speak now..." : "Search electrician, plumber, cleaner…"}
             value={query}
             onChange={e => setQuery(e.target.value)}
             style={{
@@ -234,7 +315,50 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
               ×
             </button>
           )}
+
+          {/* Voice Search Button */}
+          <button
+            type="button"
+            onClick={toggleVoiceSearch}
+            title={isListening ? "Listening... Click to stop" : "Voice Search"}
+            style={{
+              background: isListening ? '#EF4444' : '#F1F5F9',
+              border: 'none',
+              borderRadius: 8,
+              padding: '6px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {isListening ? (
+              <MicOff size={16} color="white" />
+            ) : (
+              <Mic size={16} color="#64748B" />
+            )}
+          </button>
         </div>
+
+        {isListening && (
+          <div style={{
+            marginTop: 10,
+            padding: '8px 14px',
+            background: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: 10,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            color: '#F87171',
+            fontSize: 11,
+            fontWeight: 600,
+          }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF4444' }} />
+            Listening... Speak now (e.g. "Electrician", "Plumber")
+          </div>
+        )}
       </div>
 
       {/* ── All Services Grid ── */}

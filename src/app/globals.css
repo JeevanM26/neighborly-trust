@@ -86,11 +86,14 @@ body {
    ============================================================ */
 .screen {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
+.screen[hidden] { display: none !important; }
 .screen::-webkit-scrollbar { display: none; }
 
 /* ============================================================

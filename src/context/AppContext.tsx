@@ -101,10 +101,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 // ─── Provider ─────────────────────────────────────────────
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // ── Auth ──
-  const [user, setUser] = useState<UserProfile | null>(() => {
-    if (typeof window === 'undefined') return null;
-    try { return JSON.parse(localStorage.getItem('nt_user') ?? 'null'); } catch { return null; }
-  });
+  const [user, setUser] = useState<UserProfile | null>(null);
 
   // ── Data ──
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -112,11 +109,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isLoading, setIsLoading] = useState(true);
 
   // ── Settings ──
-  const [settings, setSettings] = useState<AppSettings>(() => {
-    if (typeof window === 'undefined') return { language: 'en', sounds: true, voice: false };
-    try { return JSON.parse(localStorage.getItem('nt_settings') ?? 'null') ?? { language: 'en', sounds: true, voice: false }; }
-    catch { return { language: 'en', sounds: true, voice: false }; }
-  });
+  const [settings, setSettings] = useState<AppSettings>({ language: 'en', sounds: true, voice: false });
+
+  useEffect(() => {
+    try {
+      const savedUser = localStorage.getItem('nt_user');
+      if (savedUser) setUser(JSON.parse(savedUser));
+    } catch {}
+    try {
+      const savedSettings = localStorage.getItem('nt_settings');
+      if (savedSettings) setSettings(JSON.parse(savedSettings));
+    } catch {}
+  }, []);
 
   // ── Toast ──
   const [toast, setToast] = useState<ToastState | null>(null);
