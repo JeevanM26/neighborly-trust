@@ -25,7 +25,7 @@ export default function LoginScreen() {
   const [step, setStep] = useState<Step>('lang');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '']);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [generatedOtp, setGeneratedOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [consent, setConsent] = useState(false);
@@ -34,6 +34,8 @@ export default function LoginScreen() {
   // 'sms' = sent to phone, 'screen' = shown in toast (dev mode)
   const [otpMethod, setOtpMethod] = useState<'sms' | 'screen'>('screen');
   const otpRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -57,21 +59,11 @@ export default function LoginScreen() {
     if (!/^[6-9]\d{9}$/.test(cleanPhone)) { setError('Enter a valid 10-digit mobile number.'); return; }
     if (!consent) { setError('Please accept the privacy consent to continue.'); return; }
 
-    // Owner bypass — direct login
-    const ownerList = (() => {
-      try {
-        const saved = typeof window !== 'undefined' ? localStorage.getItem('nt_owner_numbers') : null;
-        return saved ? JSON.parse(saved) : OWNER_PHONES;
-      } catch { return OWNER_PHONES; }
-    })();
-
-    if (ownerList.includes(cleanPhone) || cleanPhone === PRIMARY_SUPER_OWNER) {
-      loginUser(cleanPhone, cleanName || 'Owner');
-      return;
-    }
+    // Removed owner bypass to enforce OTP for all users
 
     setLoading(true);
-    const code = generateOtp();
+    // Ensure we generate a 6-digit dummy OTP if we stick with dummy auth, or just change length for now
+    const code = String(Math.floor(100000 + Math.random() * 900000));
     setGeneratedOtp(code);
 
     try {
@@ -90,7 +82,7 @@ export default function LoginScreen() {
     setLoading(false);
     setStep('otp');
     setCountdown(30);
-    setOtp(['', '', '', '']);
+    setOtp(['', '', '', '', '', '']);
     setTimeout(() => otpRefs[0].current?.focus(), 100);
   };
 
@@ -100,11 +92,11 @@ export default function LoginScreen() {
     next[idx] = val;
     setOtp(next);
     setError('');
-    if (val && idx < 3) otpRefs[idx + 1].current?.focus();
-    if (val && idx === 3) {
+    if (val && idx < 5) otpRefs[idx + 1].current?.focus();
+    if (val && idx === 5) {
       // Auto-verify when last digit entered
       const fullCode = next.join('');
-      if (fullCode.length === 4) setTimeout(() => verifyOtp(fullCode), 80);
+      if (fullCode.length === 6) setTimeout(() => verifyOtp(fullCode), 80);
     }
   };
 
@@ -116,7 +108,7 @@ export default function LoginScreen() {
 
   const verifyOtp = (code?: string) => {
     const entered = code ?? otp.join('');
-    if (entered.length < 4) { setError('Please enter all 4 digits.'); return; }
+    if (entered.length < 6) { setError('Please enter all 6 digits.'); return; }
     if (entered !== generatedOtp) { setError('Incorrect OTP. Please try again.'); return; }
     setLoading(true);
     setTimeout(() => {
@@ -193,37 +185,19 @@ export default function LoginScreen() {
           </button>
           <h1 style={{ fontSize: 26, fontWeight: 900, color: 'white', margin: 0, letterSpacing: '-0.4px' }}>Verify your number</h1>
           <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, marginTop: 6, fontWeight: 500 }}>
-            {otpMethod === 'sms'
-              ? `Code sent via SMS to +91 ${phone}`
-              : `Enter the code shown in the notification`
-            }
+            {`Code sent via SMS to +91 ${phone}`}
           </p>
           {/* Delivery method badge */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, background: otpMethod === 'sms' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', border: `1px solid ${otpMethod === 'sms' ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`, borderRadius: 20, padding: '5px 12px' }}>
-            {otpMethod === 'sms' ? (
-              <><Smartphone size={12} color="#6EE7B7" /><span style={{ fontSize: 11, fontWeight: 700, color: '#6EE7B7' }}>Sent via SMS</span></>
-            ) : (
-              <><MessageSquare size={12} color="#FCD34D" /><span style={{ fontSize: 11, fontWeight: 700, color: '#FCD34D' }}>Check the notification above ↑</span></>
-            )}
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, background: 'rgba(16,185,129,0.15)', border: `1px solid rgba(16,185,129,0.3)`, borderRadius: 20, padding: '5px 12px' }}>
+            <><Smartphone size={12} color="#6EE7B7" /><span style={{ fontSize: 11, fontWeight: 700, color: '#6EE7B7' }}>Sent via SMS</span></>
           </div>
         </div>
 
         <div style={{ padding: '28px 24px' }}>
           <div style={{ background: 'white', borderRadius: 20, padding: '28px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', border: '1px solid #F1F5F9' }}>
             <p style={{ textAlign: 'center', fontSize: 13, color: '#64748B', fontWeight: 500, marginBottom: 20 }}>
-              {selectedLang.native === 'English' ? 'Enter the 4-digit code' : `OTP ನಮೂದಿಸಿ`}
+              {selectedLang.native === 'English' ? 'Enter the 6-digit code' : `OTP ನಮೂದಿಸಿ`}
             </p>
-
-            {/* Dev-mode info box */}
-            {otpMethod === 'screen' && (
-              <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                <span style={{ fontSize: 16, flexShrink: 0 }}>💡</span>
-                <div>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: '#92400E', margin: '0 0 2px' }}>Demo Mode</p>
-                  <p style={{ fontSize: 11, color: '#B45309', margin: 0, fontWeight: 500 }}>Your OTP was shown in the notification at the top. Add a Fast2SMS API key to send real SMS.</p>
-                </div>
-              </div>
-            )}
 
             <div className="otp-group" style={{ marginBottom: 20 }}>
               {otp.map((digit, idx) => (
@@ -249,10 +223,10 @@ export default function LoginScreen() {
 
             <button
               onClick={() => verifyOtp()}
-              disabled={loading || otp.join('').length < 4}
+              disabled={loading || otp.join('').length < 6}
               style={{
                 width: '100%', padding: '15px', borderRadius: 14,
-                background: otp.join('').length < 4 ? '#94A3B8' : '#0B3D66',
+                background: otp.join('').length < 6 ? '#94A3B8' : '#0B3D66',
                 color: 'white', fontWeight: 800, fontSize: 15, border: 'none', cursor: 'pointer',
                 transition: 'all 0.15s ease', letterSpacing: '-0.2px',
               }}

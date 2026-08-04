@@ -1,0 +1,8 @@
+{
+	"appId": "com.neighborlytrust.customer",
+	"appName": "Neighborly Trust",
+	"webDir": "out",
+	"server": {
+		"androidScheme": "https"
+	}
+}

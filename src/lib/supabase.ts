@@ -27,28 +27,10 @@ export function isConfigured(): boolean {
 
 // ─── Fetch all providers ──────────────────────────────────
 export async function fetchProviders(): Promise<Provider[]> {
-  const mockProviders: Provider[] = [
-    {
-      id: 'mock-jeevan',
-      name: 'Jeevan',
-      category: 'Electrician',
-      description: 'Expert electrician with 5 years of experience in residential and commercial wiring.',
-      hourly_rate: 350,
-      rating: 5.0,
-      reviews_count: 12,
-      is_online: true,
-      lat: 13.9299,
-      lng: 75.5681,
-      featured: true,
-      avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jeevan',
-      phone: '7975182162',
-    }
-  ];
-
-  if (!isConfigured()) return mockProviders;
+  if (!isConfigured()) return [];
   try {
     const client = getClient();
-    if (!client) return mockProviders;
+    if (!client) return [];
     const { data, error } = await client
       .from('provider_profiles')
       .select(`
@@ -58,7 +40,7 @@ export async function fetchProviders(): Promise<Provider[]> {
       `)
       .order('featured', { ascending: false });
 
-    if (error || !data || data.length === 0) return mockProviders;
+    if (error || !data || data.length === 0) return [];
 
     return data.map((row: any) => ({
       id: row.id,
@@ -77,7 +59,7 @@ export async function fetchProviders(): Promise<Provider[]> {
     }));
   } catch (err) {
     console.error('Error fetching providers:', err);
-    return mockProviders;
+    return [];
   }
 }
 
