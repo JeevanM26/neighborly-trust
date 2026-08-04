@@ -156,3 +156,65 @@ export async function upsertProfile(profile: {
     return false;
   }
 }
+
+// ─── Real-time: provider online status changes ─────────────
+// When a worker toggles "Go Online" in the worker app, the customer
+// app gets a push update within ~1 second without polling.
+export function subscribeToProviders(
+  onChange: (updatedRow: Partial<Provider> & { id: string }) => void
+): ReturnType<ReturnType<typeof getClient>['channel']> | null {
+  const client = getClient();
+  if (!client) return null;
+
+  return client
+    .channel('provider_profiles_realtime')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'provider_profiles' },
+      (payload) => {
+        const row = payload.new as any;
+        if (!row?.id) return;
+        onChange({
+          id: row.id,
+          is_online: !!row.is_online,
+          hourly_rate: Number(row.hourly_rate),
+          category: row.category,
+          lat: Number(row.lat),
+          lng: Number(row.lng),
+          featured: !!row.featured,
+        });
+      }
+    )
+    .subscribe();
+}
+
+// ─── Real-time: booking status updates ────────────────────
+// When a worker accepts/declines/completes a booking, the customer
+// app gets an instant push update.
+export function subscribeToBookingStatus(
+  customerId: string,
+  onUpdate: (bookingId: string, status: string) => void
+): ReturnType<ReturnType<typeof getClient>['channel']> | null {
+  const client = getClient();
+  if (!client || !customerId) return null;
+
+  return client
+    .channel(`bookings_customer_${customerId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'bookings',
+        filter: `customer_id=eq.${customerId}`,
+      },
+      (payload) => {
+        const row = payload.new as any;
+        if (row?.id && row?.status) {
+          onUpdate(row.id, row.status);
+        }
+      }
+    )
+    .subscribe();
+}
+

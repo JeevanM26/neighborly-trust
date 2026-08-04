@@ -4,7 +4,7 @@ import {
   UserProfile, Provider, Booking, AppSettings, LanguageCode, ToastState,
   DEFAULT_LOCATION, OWNER_PHONES,
 } from '../lib/types';
-import { fetchProviders, fetchCustomerBookings, createBooking, isConfigured } from '../lib/supabase';
+import { fetchProviders, fetchCustomerBookings, createBooking, isConfigured, subscribeToProviders, subscribeToBookingStatus } from '../lib/supabase';
 import confetti from 'canvas-confetti';
 
 // ─── i18n (inline minimal — key phrases only) ─────────────
@@ -179,6 +179,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => { refreshProviders(); }, [refreshProviders]);
   useEffect(() => { if (user) refreshBookings(); }, [user, refreshBookings]);
+
+  // ── Real-time: provider online status ────────────────────
+  // When a worker taps "Go Online" in the worker app, this channel fires
+  // and we patch the provider list in-place — no full re-fetch needed.
+  useEffect(() => {
+    if (!isConfigured()) return;
+    const channel = subscribeToProviders((updated) => {
+      setProviders(prev => {
+        const exists = prev.some(p => p.id === updated.id);
+        if (!exists) {
+          // New provider appeared — trigger a full refresh to get their name/avatar
+          refreshProviders();
+          return prev;
+        }
+        return prev.map(p =>
+          p.id === updated.id ? { ...p, ...updated } : p
+        );
+      });
+    });
+    return () => { channel?.unsubscribe(); };
+  }, [refreshProviders]);
+
+  // ── Real-time: booking status updates ────────────────────
+  // When the worker accepts/completes the booking, the customer sees it live.
+  useEffect(() => {
+    if (!isConfigured() || !user?.id) return;
+    const channel = subscribeToBookingStatus(user.id, (bookingId, status) => {
+      setBookings(prev =>
+        prev.map(b => b.id === bookingId ? { ...b, status: status as any } : b)
+      );
+      if (status === 'accepted') {
+        showToast('✅ Your worker is on the way!', 'success');
+        try { confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 }, colors: ['#10B981', '#0B3D66'] }); } catch {}
+      } else if (status === 'completed') {
+        showToast('🎉 Job completed! Please rate your worker.', 'success');
+      } else if (status === 'declined') {
+        showToast('Worker declined. Please try another specialist.', 'error');
+      }
+    });
+    return () => { channel?.unsubscribe(); };
+  }, [user?.id, showToast]);
 
   // ── Toast ──
   const showToast = useCallback((message: string, type: ToastState['type'] = 'success') => {
