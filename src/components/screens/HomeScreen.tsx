@@ -270,13 +270,15 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      // Fallback simulation
-      const sample = "Water tap leaking plumber required";
-      handleVoiceSubmit(sample);
+      showToast('Speech Recognition API is not supported on this browser/device. Try Google Chrome or Android WebView.', 'error');
       return;
     }
 
     try {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch {}
+      }
+
       const recognition = new SpeechRecognition();
       recognitionRef.current = recognition;
       recognition.continuous = false;
@@ -285,8 +287,8 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
 
       recognition.onstart = () => {
         setIsRecording(true);
-        speakText("Speak now... Say your issue");
-        showToast('🎙️ Recording... Speak your issue', 'info');
+        speakText("Speak now");
+        showToast('🎙️ Listening... Speak your issue now', 'info');
       };
 
       recognition.onresult = (event: any) => {
@@ -294,13 +296,22 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
           .map((result: any) => result[0].transcript)
           .join('');
         setQueryText(transcript);
-        handleVoiceSubmit(transcript);
+        const matched = parseQueryToCategory(transcript);
+        if (matched) {
+          setActiveCategory(matched);
+        }
       };
 
       recognition.onerror = (event: any) => {
+        console.warn('Speech recognition error:', event.error);
         setIsRecording(false);
-        const sample = "Light is not working electrician";
-        handleVoiceSubmit(sample);
+        if (event.error === 'not-allowed') {
+          showToast('Microphone permission denied. Please grant audio permission in site/app settings.', 'error');
+        } else if (event.error === 'no-speech') {
+          showToast('No speech detected. Please tap microphone and try again.', 'info');
+        } else {
+          showToast(`Speech error: ${event.error}`, 'error');
+        }
       };
 
       recognition.onend = () => {
@@ -308,10 +319,10 @@ export default function HomeScreen({ onSelectProvider }: { onSelectProvider: (p:
       };
 
       recognition.start();
-    } catch (err) {
+    } catch (err: any) {
+      console.error('Failed to start voice mic:', err);
       setIsRecording(false);
-      const sample = "Water tap leaking plumber required";
-      handleVoiceSubmit(sample);
+      showToast(`Unable to start microphone: ${err?.message || 'Permission or state error'}`, 'error');
     }
   };
 
