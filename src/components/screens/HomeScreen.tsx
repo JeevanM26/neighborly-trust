@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp, calcDistance } from '../../context/AppContext';
 import { Provider, SERVICE_CATEGORIES } from '../../lib/types';
 import { Search, MapPin, Star, Navigation, RefreshCw, ChevronRight, Zap, Mic, MicOff } from 'lucide-react';
