@@ -633,26 +633,31 @@ export default function HomeScreen({
     }
 
     // ── Step 2: Request mic permission via getUserMedia ──────────────
-    // Only reached when state is 'prompt' (first time) or 'granted'.
-    // getUserMedia inside a user-gesture handler IS the correct trigger for
-    // Chrome's "Allow microphone?" popup on Android.
-    let micStream: MediaStream | null = null;
-    try {
-      if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
-        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // We ONLY use getUserMedia to trigger the browser permission dialog and
+    // confirm the user has granted access. We release the stream immediately
+    // after — holding it open causes a MIC CONFLICT on Chrome Android where
+    // SpeechRecognition can't access the mic and fires 'no-speech'.
+    if (permState === 'prompt') {
+      // Only need getUserMedia on first-time prompt; 'granted' skips this.
+      try {
+        if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+          const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          // Release IMMEDIATELY — permission is confirmed, mic is free for recognition
+          tempStream.getTracks().forEach(t => t.stop());
+        }
+      } catch (permErr: any) {
+        console.warn('[VoiceSearch] getUserMedia denied:', permErr);
+        const name = permErr?.name ?? '';
+        if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+          setShowMicHelp(true);
+        } else if (name === 'NotFoundError') {
+          showToast('No microphone found on this device.', 'error');
+        } else {
+          showToast(`Mic error: ${permErr?.message ?? 'Unknown'}`, 'error');
+        }
+        closeVoiceOverlay();
+        return;
       }
-    } catch (permErr: any) {
-      console.warn('[VoiceSearch] getUserMedia denied:', permErr);
-      const name = permErr?.name ?? '';
-      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-        // User tapped "Deny" on the fresh dialog → show help
-        setShowMicHelp(true);
-      } else if (name === 'NotFoundError') {
-        showToast('No microphone found on this device.', 'error');
-      } else {
-        showToast(`Mic error: ${permErr?.message ?? 'Unknown'}`, 'error');
-      }
-      return;
     }
 
     // ── Step 2: Start SpeechRecognition (permission is now granted) ──
@@ -718,7 +723,7 @@ export default function HomeScreen({
       recognition.onerror = (event: any) => {
         console.warn('[VoiceSearch] error:', event.error);
         setIsRecording(false);
-        micStream?.getTracks().forEach(t => t.stop());
+        // No micStream to release — it was already released before recognition started
         switch (event.error) {
           case 'not-allowed':
           case 'service-not-allowed':
@@ -728,10 +733,7 @@ export default function HomeScreen({
           case 'no-speech':
             setVoiceState('error');
             setLiveTranscript('');
-            // Auto-recover: go back to listening hint after 1.5s
-            setTimeout(() => {
-              setVoiceState('listening');
-            }, 1500);
+            setTimeout(() => setVoiceState('listening'), 1500);
             break;
           case 'aborted':
             closeVoiceOverlay();
@@ -744,15 +746,13 @@ export default function HomeScreen({
 
       recognition.onend = () => {
         setIsRecording(false);
-        micStream?.getTracks().forEach(t => t.stop());
-
+        // No micStream to release — already released before recognition started.
         // Chrome Android fallback: commit interim if no final was received
         if (!finalCommittedRef.current && lastInterimRef.current.trim()) {
           setVoiceState('processing');
           commitQuery(lastInterimRef.current.trim());
           setTimeout(() => closeVoiceOverlay(), 900);
         } else if (!finalCommittedRef.current) {
-          // Nothing was heard at all
           setVoiceState('error');
           setTimeout(() => closeVoiceOverlay(), 2000);
         }
