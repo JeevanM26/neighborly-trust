@@ -180,29 +180,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { refreshProviders(); }, [refreshProviders]);
   useEffect(() => { if (user) refreshBookings(); }, [user, refreshBookings]);
 
+
+  // ── Toast ──
+  const showToast = useCallback((message: string, type: ToastState['type'] = 'success') => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ id: Date.now().toString(), message, type });
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  const dismissToast = useCallback(() => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(null);
+  }, []);
+
   // ── Real-time: provider online status ────────────────────
-  // When a worker taps "Go Online" in the worker app, this channel fires
-  // and we patch the provider list in-place — no full re-fetch needed.
+  // When a worker taps "Go Online" in the worker app, this fires and
+  // patches the provider list in-place — no full re-fetch needed.
   useEffect(() => {
     if (!isConfigured()) return;
     const channel = subscribeToProviders((updated) => {
       setProviders(prev => {
         const exists = prev.some(p => p.id === updated.id);
-        if (!exists) {
-          // New provider appeared — trigger a full refresh to get their name/avatar
-          refreshProviders();
-          return prev;
-        }
-        return prev.map(p =>
-          p.id === updated.id ? { ...p, ...updated } : p
-        );
+        if (!exists) { refreshProviders(); return prev; }
+        return prev.map(p => p.id === updated.id ? { ...p, ...updated } : p);
       });
     });
     return () => { channel?.unsubscribe(); };
   }, [refreshProviders]);
 
   // ── Real-time: booking status updates ────────────────────
-  // When the worker accepts/completes the booking, the customer sees it live.
+  // When the worker accepts/declines the booking, the customer sees it instantly.
   useEffect(() => {
     if (!isConfigured() || !user?.id) return;
     const channel = subscribeToBookingStatus(user.id, (bookingId, status) => {
@@ -220,18 +227,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     return () => { channel?.unsubscribe(); };
   }, [user?.id, showToast]);
-
-  // ── Toast ──
-  const showToast = useCallback((message: string, type: ToastState['type'] = 'success') => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ id: Date.now().toString(), message, type });
-    toastTimer.current = setTimeout(() => setToast(null), 3000);
-  }, []);
-
-  const dismissToast = useCallback(() => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast(null);
-  }, []);
 
   // ── Auth ──
   const loginUser = useCallback((phone: string, name: string) => {
