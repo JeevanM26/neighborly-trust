@@ -1,103 +1,106 @@
 'use client';
 import React, { useState } from 'react';
 import { WorkerProvider, useWorker } from '../context/WorkerContext';
-import { LayoutGrid, Bell, Briefcase, TrendingUp, User } from 'lucide-react';
-
-// Screens
-import WorkerLoginScreen from '../components/screens/WorkerLoginScreen';
-import DashboardScreen from '../components/screens/DashboardScreen';
-import RequestsScreen from '../components/screens/RequestsScreen';
-import JobsScreen from '../components/screens/JobsScreen';
+import WorkerDashboard from '../components/screens/WorkerDashboard';
+import IncomingJobsScreen from '../components/screens/IncomingJobsScreen';
 import EarningsScreen from '../components/screens/EarningsScreen';
-import WorkerProfileScreen from '../components/screens/WorkerProfileScreen';
+import { Home, Briefcase, DollarSign, Bell } from 'lucide-react';
 
-type Tab = 'dashboard' | 'requests' | 'jobs' | 'earnings' | 'profile';
+type Tab = 'dashboard' | 'jobs' | 'earnings';
 
 function Toast() {
-  const { toast, dismissToast } = useWorker();
+  const { toast } = useWorker();
   if (!toast) return null;
-  const icons: Record<string, string> = { success: '✅', error: '❌', info: 'ℹ️' };
+
   return (
-    <div className="toast-container" onClick={dismissToast} style={{ cursor: 'pointer' }}>
-      <div className={`toast toast-${toast.type}`}>
-        <span style={{ fontSize: 16 }}>{icons[toast.type]}</span>
-        <span style={{ flex: 1 }}>{toast.message}</span>
-      </div>
+    <div style={{
+      position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)',
+      zIndex: 9999, background: '#0F172A', color: 'white', padding: '12px 20px',
+      borderRadius: 30, fontSize: 13, fontWeight: 700, boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+      display: 'flex', alignItems: 'center', gap: 8, animation: 'fadeIn 0.2s ease-out'
+    }}>
+      <Bell size={16} color="#F59E0B" />
+      <span>{toast}</span>
     </div>
   );
 }
 
-function BottomNav({ active, onChange, pendingCount }: {
-  active: Tab;
-  onChange: (t: Tab) => void;
-  pendingCount: number;
-}) {
-  const items: { key: Tab; label: string; icon: any }[] = [
-    { key: 'dashboard', label: 'Home',     icon: LayoutGrid },
-    { key: 'requests',  label: 'Requests', icon: Bell       },
-    { key: 'jobs',      label: 'Jobs',     icon: Briefcase  },
-    { key: 'earnings',  label: 'Earnings', icon: TrendingUp },
-    { key: 'profile',   label: 'Profile',  icon: User       },
-  ];
+function MainContent() {
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const { jobs } = useWorker();
+
+  const pendingCount = jobs.filter(j => j.status === 'pending').length;
 
   return (
-    <nav className="bottom-nav" style={{ gridTemplateColumns: `repeat(${items.length}, 1fr)` }}>
-      {items.map(item => (
-        <button key={item.key} className={`nav-item${active === item.key ? ' active' : ''}`} onClick={() => onChange(item.key)}>
+    <div style={{ maxWidth: 480, margin: '0 auto', background: '#F8FAFC', minHeight: '100vh', position: 'relative' }}>
+      <Toast />
+
+      {activeTab === 'dashboard' && <WorkerDashboard onNavigateTab={setActiveTab} />}
+      {activeTab === 'jobs' && <IncomingJobsScreen onBack={() => setActiveTab('dashboard')} />}
+      {activeTab === 'earnings' && <EarningsScreen onBack={() => setActiveTab('dashboard')} />}
+
+      {/* Bottom Navigation */}
+      <nav style={{
+        position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+        width: '100%', maxWidth: 480, background: 'white', borderTop: '1px solid #E2E8F0',
+        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', padding: '8px 0', zIndex: 100,
+        boxShadow: '0 -4px 20px rgba(0,0,0,0.05)'
+      }}>
+        <button
+          onClick={() => setActiveTab('dashboard')}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer', display: 'flex',
+            flexDirection: 'column', alignItems: 'center', gap: 4,
+            color: activeTab === 'dashboard' ? '#0B3D66' : '#94A3B8'
+          }}
+        >
+          <Home size={20} strokeWidth={activeTab === 'dashboard' ? 2.5 : 1.8} />
+          <span style={{ fontSize: 11, fontWeight: activeTab === 'dashboard' ? 800 : 500 }}>Dashboard</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('jobs')}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer', display: 'flex',
+            flexDirection: 'column', alignItems: 'center', gap: 4, position: 'relative',
+            color: activeTab === 'jobs' ? '#0B3D66' : '#94A3B8'
+          }}
+        >
           <div style={{ position: 'relative' }}>
-            <item.icon size={22} strokeWidth={active === item.key ? 2.5 : 1.8} />
-            {item.key === 'requests' && pendingCount > 0 && (
-              <div style={{ position: 'absolute', top: -5, right: -5, background: '#EF4444', color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: 9, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white', animation: 'pulse 1.5s infinite' }}>
-                {pendingCount > 9 ? '9+' : pendingCount}
-              </div>
+            <Briefcase size={20} strokeWidth={activeTab === 'jobs' ? 2.5 : 1.8} />
+            {pendingCount > 0 && (
+              <span style={{
+                position: 'absolute', top: -4, right: -6, background: '#EF4444', color: 'white',
+                fontSize: 9, fontWeight: 900, borderRadius: '50%', width: 14, height: 14,
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                {pendingCount}
+              </span>
             )}
           </div>
-          <span style={{ fontSize: 9, fontWeight: active === item.key ? 800 : 500 }}>{item.label}</span>
-          <div className="nav-item-dot" />
+          <span style={{ fontSize: 11, fontWeight: activeTab === 'jobs' ? 800 : 500 }}>Jobs</span>
         </button>
-      ))}
-    </nav>
+
+        <button
+          onClick={() => setActiveTab('earnings')}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer', display: 'flex',
+            flexDirection: 'column', alignItems: 'center', gap: 4,
+            color: activeTab === 'earnings' ? '#0B3D66' : '#94A3B8'
+          }}
+        >
+          <DollarSign size={20} strokeWidth={activeTab === 'earnings' ? 2.5 : 1.8} />
+          <span style={{ fontSize: 11, fontWeight: activeTab === 'earnings' ? 800 : 500 }}>Earnings</span>
+        </button>
+      </nav>
+    </div>
   );
 }
 
-function AppShell() {
-  const { isLoggedIn, isNewWorker, pendingBookings } = useWorker();
-  const [tab, setTab] = useState<Tab>('dashboard');
-
-  if (!isLoggedIn) {
-    return (
-      <>
-        <div className="screen" style={{ flex: 1 }}>
-          <WorkerLoginScreen />
-        </div>
-        <Toast />
-      </>
-    );
-  }
-
-  const screens: Record<Tab, React.ReactNode> = {
-    dashboard: <DashboardScreen onGoToRequests={() => setTab('requests')} onGoToJobs={() => setTab('jobs')} />,
-    requests:  <RequestsScreen />,
-    jobs:      <JobsScreen />,
-    earnings:  <EarningsScreen />,
-    profile:   <WorkerProfileScreen />,
-  };
-
-  return (
-    <>
-      <Toast />
-      <div className="screen" style={{ flex: 1, overflow: 'hidden' }}>
-        {screens[tab]}
-      </div>
-      <BottomNav active={tab} onChange={setTab} pendingCount={pendingBookings.length} />
-    </>
-  );
-}
-
-export default function Page() {
+export default function WorkerApp() {
   return (
     <WorkerProvider>
-      <AppShell />
+      <MainContent />
     </WorkerProvider>
   );
 }

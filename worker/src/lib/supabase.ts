@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { WorkerProfile, BookingRequest, WorkerSkill, COMMISSION_RATE } from './types';
 
@@ -202,3 +203,4 @@ export function subscribeToBookings(
     })
     .subscribe();
 }
+

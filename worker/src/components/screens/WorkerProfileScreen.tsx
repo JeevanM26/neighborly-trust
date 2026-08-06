@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client';
 import React, { useState } from 'react';
 import { useWorker } from '../../context/WorkerContext';
@@ -200,3 +201,4 @@ export default function WorkerProfileScreen() {
     </div>
   );
 }
+

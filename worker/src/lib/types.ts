@@ -1,106 +1,88 @@
 // ============================================================
-// NEIGHBORLY TRUST — Worker App Domain Types
+// NEIGHBORLY TRUST WORKER — Domain Types
 // ============================================================
 
-export type LanguageCode = 'en' | 'hi' | 'bn' | 'te' | 'mr' | 'ta' | 'gu' | 'kn' | 'ml' | 'pa';
+export type JobStatus = 'pending' | 'accepted' | 'in_progress' | 'completed' | 'declined' | 'cancelled';
+export type BookingStatus = JobStatus;
+export type ServiceCategory = 'Electrician' | 'Plumber' | 'Carpenter' | 'Home Clean';
 
-export type ServiceCategory =
-  | 'Electrician'
-  | 'Plumber'
-  | 'Carpenter'
-  | 'Home Clean'
-  | 'Painter'
-  | 'Pest Control';
+export const SKILL_CATEGORIES = ['Electrician', 'Plumber', 'Carpenter', 'Home Clean', 'Painter', 'Pest Control'];
 
-export type BookingStatus = 'pending' | 'accepted' | 'in_progress' | 'completed' | 'declined' | 'cancelled';
+export interface WorkerSkill {
+  category: string;
+  is_active: boolean;
+  jobs_count: number;
+  hourly_rate: number;
+  key?: string;
+  emoji?: string;
+  label?: string;
+  description?: string;
+  bg?: string;
+  default_rate?: string;
+}
 
-// ─── Worker Profile ────────────────────────────────────────
 export interface WorkerProfile {
   id: string;
+  name: string;
   full_name: string;
   phone: string;
-  language: LanguageCode;
-  avatar_url?: string;
-  is_online: boolean;
+  category: ServiceCategory | string;
+  hourly_rate: number;
+  avg_rating: number;
   rating: number;
   reviews_count: number;
   total_jobs: number;
-  consent_given: boolean;
-  // Multi-skill: array of skills with individual rates
+  is_online: boolean;
+  lat: number;
+  lng: number;
+  avatar_url: string;
   skills: WorkerSkill[];
 }
 
-// ─── Worker Skill (one per category) ──────────────────────
-export interface WorkerSkill {
-  category: ServiceCategory;
-  hourly_rate: number;    // ₹ per hour for this specific skill
-  is_active: boolean;     // worker can temporarily disable a skill
-  jobs_count: number;     // jobs done in this category
-}
-
-// ─── Booking (from customer side) ─────────────────────────
-export interface BookingRequest {
+export interface IncomingJob {
   id: string;
   customer_id: string;
   customer_name: string;
-  customer_phone?: string;
-  service_type: ServiceCategory | string;
-  address_notes?: string;
+  customer_phone: string;
+  service_type: string;
+  address_notes: string;
+  distance_km: number;
   total_amount: number;
-  commission_amount: number;
-  net_amount: number;       // total - commission
-  status: BookingStatus;
-  created_at: string;
-  // time left to respond (90s from creation)
+  commission_amount: number; // 8% platform fee
+  net_earnings: number;      // 92% to provider
+  net_amount?: number;       // Alias for net_earnings
   expires_at?: string;
+  status: JobStatus;
+  created_at: string;
 }
 
-// ─── Earnings Summary ─────────────────────────────────────
-export interface EarningsSummary {
-  gross: number;
-  commission: number;
-  net: number;
-  jobs_count: number;
-  period: 'today' | 'week' | 'month';
-  by_skill: { category: string; amount: number; count: number }[];
+export type BookingRequest = IncomingJob;
+
+export interface PayoutSummary {
+  gross_earnings: number;
+  platform_commission: number; // 8%
+  net_payout: number;          // 92%
+  completed_jobs_count: number;
+  pending_payout_amount: number;
 }
 
-// ─── App Settings ─────────────────────────────────────────
-export interface WorkerSettings {
-  language: LanguageCode;
-  sounds: boolean;
-  notifications: boolean;
-}
-
-// ─── Toast ────────────────────────────────────────────────
-export interface ToastState {
+export interface PayoutRecord {
   id: string;
-  message: string;
-  type: 'success' | 'error' | 'info';
+  job_id: string;
+  customer_name: string;
+  service_type: string;
+  gross_amount: number;
+  commission_amount: number;
+  net_amount: number;
+  date: string;
+  status: 'paid' | 'pending';
 }
 
-// ─── Service Category Meta ─────────────────────────────────
-export const SKILL_CATEGORIES: {
-  key: ServiceCategory;
-  label: string;
-  emoji: string;
-  color: string;
-  bg: string;
-  description: string;
-  default_rate: number;
-}[] = [
-  { key: 'Electrician',  label: 'Electrician',  emoji: '⚡', color: '#B45309', bg: '#FEF3C7', description: 'Wiring, repairs, installations',   default_rate: 400 },
-  { key: 'Plumber',      label: 'Plumber',      emoji: '🔧', color: '#0369A1', bg: '#E0F2FE', description: 'Pipes, faucets, drainage',          default_rate: 350 },
-  { key: 'Carpenter',    label: 'Carpenter',    emoji: '🪚', color: '#C2410C', bg: '#FFEDD5', description: 'Furniture, woodwork, doors',        default_rate: 380 },
-  { key: 'Home Clean',   label: 'Home Clean',   emoji: '🧹', color: '#15803D', bg: '#DCFCE7', description: 'Deep cleaning, housekeeping',      default_rate: 280 },
-  { key: 'Painter',      label: 'Painter',      emoji: '🎨', color: '#6D28D9', bg: '#EDE9FE', description: 'Interior & exterior painting',     default_rate: 350 },
-  { key: 'Pest Control', label: 'Pest Control', emoji: '🐛', color: '#065F46', bg: '#ECFDF5', description: 'Fumigation & prevention',          default_rate: 450 },
-];
+export const PLATFORM_COMMISSION_RATE = 0.08; // 8% commission rate
+export const COMMISSION_RATE = PLATFORM_COMMISSION_RATE;
 
-// ─── Owner Config ─────────────────────────────────────────
-export const PRIMARY_SUPER_OWNER = '7975182162';
-export const OWNER_PHONES: string[] = ['7975182162', '8867269712'];
-export const COMMISSION_RATE = 0.08; // 8%
-
-// ─── Default Location ─────────────────────────────────────
-export const DEFAULT_LOCATION = { lat: 13.9299, lng: 75.5681 };
+export function calculateNetEarnings(gross: number): { gross: number; commission: number; net: number } {
+  const commission = Math.round(gross * PLATFORM_COMMISSION_RATE * 100) / 100;
+  const net = Math.round((gross - commission) * 100) / 100;
+  return { gross, commission, net };
+}

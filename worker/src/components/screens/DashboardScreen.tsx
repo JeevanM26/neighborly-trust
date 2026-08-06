@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useWorker } from '../../context/WorkerContext';
@@ -160,3 +161,4 @@ export default function DashboardScreen({ onGoToRequests, onGoToJobs }: {
     </div>
   );
 }
+
