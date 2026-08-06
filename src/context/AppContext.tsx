@@ -4,8 +4,10 @@ import {
   UserProfile, Provider, Booking, AppSettings, LanguageCode, ToastState,
   DEFAULT_LOCATION, OWNER_PHONES,
 } from '../lib/types';
-import { fetchProviders, fetchCustomerBookings, createBooking, isConfigured, subscribeToProviders, subscribeToBookingStatus } from '../lib/supabase';
+import { fetchProviders, fetchCustomerBookings, createBooking, upsertProfile, isConfigured, getClient, subscribeToProviders, subscribeToBookingStatus } from '../lib/supabase';
 import confetti from 'canvas-confetti';
+import { useWebRTC } from '../hooks/useWebRTC';
+import { CallOverlay } from '../components/CallOverlay';
 
 // ─── i18n (inline minimal — key phrases only) ─────────────
 export const T: Record<string, Record<string, string>> = {
@@ -63,7 +65,8 @@ interface AppContextType {
   // Auth
   user: UserProfile | null;
   isLoggedIn: boolean;
-  loginUser: (phone: string, name: string) => void;
+  isAuthLoading: boolean;
+  loginUser: (phone: string, name: string, authUserId: string) => void;
   logoutUser: () => void;
 
   // Data
@@ -96,6 +99,7 @@ interface AppContextType {
   userLocation: { lat: number; lng: number };
   locationStatus: 'loading' | 'granted' | 'denied';
   requestLocation: () => void;
+  webrtc: ReturnType<typeof useWebRTC>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -104,6 +108,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // ── Auth ──
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   // ── Data ──
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -112,16 +117,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // ── Settings ──
   const [settings, setSettings] = useState<AppSettings>({ language: 'en', sounds: true, voice: false });
+  
+  // ── WebRTC ──
+  const webrtc = useWebRTC(user?.id || '');
 
   useEffect(() => {
-    try {
-      const savedUser = localStorage.getItem('nt_user');
-      if (savedUser) setUser(JSON.parse(savedUser));
-    } catch {}
     try {
       const savedSettings = localStorage.getItem('nt_settings');
       if (savedSettings) setSettings(JSON.parse(savedSettings));
     } catch {}
+
+    // ── Restore session from Supabase auth (source of truth) ──
+    const client = getClient();
+    if (client) {
+      // Check for existing session
+      client.auth.getSession().then(({ data }) => {
+        if (data.session?.user) {
+          const savedUser = localStorage.getItem('nt_user');
+          if (savedUser) {
+            try { setUser(JSON.parse(savedUser)); } catch {}
+          }
+        }
+        setIsAuthLoading(false);
+      });
+
+      // Listen for auth state changes (login / logout / token refresh)
+      const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_OUT' || !session) {
+          setUser(null);
+          setBookings([]);
+          localStorage.removeItem('nt_user');
+        }
+        setIsAuthLoading(false);
+      });
+
+      return () => subscription.unsubscribe();
+    } else {
+      setIsAuthLoading(false);
+    }
   }, []);
 
   // ── Toast ──
@@ -229,18 +262,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [user?.id, showToast]);
 
   // ── Auth ──
-  const loginUser = useCallback((phone: string, name: string) => {
-    const isOwner = OWNER_PHONES.includes(phone.replace(/\D/g, ''));
+  const loginUser = useCallback((phone: string, name: string, authUserId: string) => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    const isOwner = OWNER_PHONES.includes(cleanPhone);
     const profile: UserProfile = {
-      id: `cust_${phone.replace(/\D/g, '')}`,
+      id: authUserId,
       full_name: name,
-      phone,
+      phone: cleanPhone,
       role: isOwner ? 'owner' : 'customer',
       language: settings.language,
       consent_given: true,
     };
     setUser(profile);
+    localStorage.setItem('nt_user', JSON.stringify(profile));
     showToast(`Welcome, ${name.split(' ')[0]}! 👋`);
+
+    // Persist to Supabase profiles table
+    upsertProfile({
+      id: authUserId,
+      full_name: name,
+      phone: cleanPhone,
+      language: settings.language,
+      consent_given: true,
+    }).catch(() => { /* non-blocking */ });
   }, [settings.language, showToast]);
 
   const logoutUser = useCallback(() => {
@@ -248,6 +292,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setBookings([]);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('nt_user');
+    }
+    // Sign out from Supabase so the session is invalidated server-side.
+    // Without this, getSession() on next reload restores the old session.
+    const client = getClient();
+    if (client) {
+      client.auth.signOut().catch(() => { /* non-blocking */ });
     }
   }, []);
 
@@ -284,6 +334,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       if (realId) {
         setBookings(prev => prev.map(b => b.id === tempId ? { ...b, id: realId } : b));
+      } else {
+        // Insert failed — remove the optimistic temp booking and notify user.
+        setBookings(prev => prev.filter(b => b.id !== tempId));
+        showToast('Booking failed. Please try again.', 'error');
+        return;
       }
     }
 
@@ -323,15 +378,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AppContext.Provider value={{
-      user, isLoggedIn: !!user, loginUser, logoutUser,
+      user, isLoggedIn: !!user, isAuthLoading, loginUser, logoutUser,
       providers, bookings, isLoading, refreshProviders, refreshBookings,
       bookProvider, addWorkerProfile, updateBookingStatus,
       settings, setLanguage, toggleSounds, toggleVoice,
       toast, showToast, dismissToast,
       translate,
       userLocation, locationStatus, requestLocation,
+      webrtc,
     }}>
       {children}
+      <CallOverlay webrtc={webrtc} />
     </AppContext.Provider>
   );
 };

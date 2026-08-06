@@ -18,7 +18,6 @@ export default function ProviderDetail({ provider, onBack, onBooked }: ProviderD
   const [booked, setBooked] = useState(false);
 
   const cat = SERVICE_CATEGORIES.find(c => c.key === provider.category);
-  const commission = Math.round(provider.hourly_rate * 0.08);
   const total = provider.hourly_rate;
 
   const handleConfirmBook = async () => {
@@ -240,16 +239,12 @@ export default function ProviderDetail({ provider, onBack, onBooked }: ProviderD
 
             {/* Price breakdown */}
             <div style={{ background: '#F8FAFC', borderRadius: 14, padding: '14px', marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #E2E8F0' }}>
                 <span style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Service rate (1 hr)</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>₹{provider.hourly_rate}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #E2E8F0' }}>
-                <span style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Platform fee (8%)</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>₹{commission}</span>
-              </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>Total</span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>Total to pay</span>
                 <span style={{ fontSize: 14, fontWeight: 900, color: '#0B3D66' }}>₹{total}</span>
               </div>
             </div>

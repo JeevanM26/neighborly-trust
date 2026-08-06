@@ -8,10 +8,15 @@ const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 // env vars are absent at build time.
 let _client: SupabaseClient | null = null;
 
-function getClient(): SupabaseClient | null {
+export function getClient(): SupabaseClient | null {
   if (!isConfigured()) return null;
   if (!_client) {
-    _client = createClient(SUPABASE_URL, SUPABASE_KEY);
+    _client = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    });
   }
   return _client;
 }
@@ -54,11 +59,10 @@ export async function fetchProviders(): Promise<Provider[]> {
       lat: Number(row.lat),
       lng: Number(row.lng),
       featured: !!row.featured,
-      avatar_url: row.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${row.profiles?.full_name ?? 'Jeevan'}`,
+      avatar_url: row.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${row.profiles?.full_name ?? row.id}`,
       phone: row.profiles?.phone,
     }));
-  } catch (err) {
-    console.error('Error fetching providers:', err);
+  } catch {
     return [];
   }
 }
@@ -122,6 +126,7 @@ export async function createBooking(params: {
         provider_id: params.providerId,
         service_type: params.serviceType,
         total_amount: params.totalAmount,
+        commission_amount: Math.round(params.totalAmount * 0.08),
         address_notes: params.notes ?? '',
         status: 'pending',
       })
@@ -157,8 +162,6 @@ export async function upsertProfile(profile: {
 }
 
 // ─── Real-time: provider online status changes ─────────────
-// When a worker toggles "Go Online" in the worker app, the customer
-// app gets a push update within ~1 second without polling.
 export function subscribeToProviders(
   onChange: (updatedRow: Partial<Provider> & { id: string }) => void
 ): ReturnType<ReturnType<typeof getClient>['channel']> | null {
@@ -188,8 +191,6 @@ export function subscribeToProviders(
 }
 
 // ─── Real-time: booking status updates ────────────────────
-// When a worker accepts/declines/completes a booking, the customer
-// app gets an instant push update.
 export function subscribeToBookingStatus(
   customerId: string,
   onUpdate: (bookingId: string, status: string) => void
@@ -216,4 +217,3 @@ export function subscribeToBookingStatus(
     )
     .subscribe();
 }
-

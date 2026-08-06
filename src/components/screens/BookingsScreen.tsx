@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Booking } from '../../lib/types';
-import { Clock, CheckCircle, XCircle, AlertCircle, RefreshCw, CalendarDays } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, AlertCircle, RefreshCw, CalendarDays, Phone } from 'lucide-react';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: any; emoji: string }> = {
   pending:   { label: 'Pending',   color: '#92400E', bg: '#FEF3C7', icon: Clock,         emoji: '⏳' },
@@ -12,6 +12,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 };
 
 function BookingCard({ booking }: { booking: Booking }) {
+  const { user, webrtc } = useApp();
   const status = STATUS_CONFIG[booking.status] ?? STATUS_CONFIG.pending;
 
   const formattedDate = (() => {
@@ -86,6 +87,21 @@ function BookingCard({ booking }: { booking: Booking }) {
         {booking.address_notes && (
           <div style={{ marginTop: 8, background: '#F8FAFC', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: '#64748B', fontWeight: 500 }}>
             📍 {booking.address_notes}
+          </div>
+        )}
+
+        {booking.status === 'accepted' && (
+          <div style={{ marginTop: 12 }}>
+            <button 
+              onClick={(e) => { e.currentTarget.blur(); webrtc.startCall(booking.provider_id, booking.provider_name, user?.full_name || 'Customer'); }}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                background: '#F0FDF4', border: '1px solid #A7F3D0', color: '#059669',
+                padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 700, width: '100%', cursor: 'pointer'
+              }}
+            >
+              <Phone size={14} /> In-App Call Worker
+            </button>
           </div>
         )}
       </div>
@@ -174,7 +190,7 @@ export default function BookingsScreen() {
               </div>
             ))}
           </>
-        ) : shown.length === 0 ? (
+        ) : shown.length === 0 && !isLoading ? (
           <EmptyBookings />
         ) : (
           shown.map(b => <BookingCard key={b.id} booking={b} />)
