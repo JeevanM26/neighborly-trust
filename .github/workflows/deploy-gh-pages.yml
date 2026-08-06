@@ -41,6 +41,9 @@ jobs:
           NEXT_PUBLIC_COMMISSION_PERCENTAGE: 8
         run: npm run build
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
       - name: Upload GitHub Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
