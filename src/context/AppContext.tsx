@@ -139,6 +139,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         }
         setIsAuthLoading(false);
+      }).catch(err => {
+        console.error("Auth error:", err);
+        setIsAuthLoading(false);
       });
 
       // Listen for auth state changes (login / logout / token refresh)
