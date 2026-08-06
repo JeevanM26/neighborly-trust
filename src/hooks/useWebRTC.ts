@@ -25,6 +25,7 @@ export function useWebRTC(userId: string) {
   useEffect(() => {
     if (!userId) return;
     const client = getClient();
+    if (!client) return;
     const personalChannel = client.channel(`user_${userId}`);
     
     personalChannel
@@ -120,6 +121,7 @@ export function useWebRTC(userId: string) {
 
   const joinRoom = (roomId: string) => {
     const client = getClient();
+    if (!client) return;
     const room = client.channel(roomId);
     channel.current = room;
 
@@ -192,6 +194,7 @@ export function useWebRTC(userId: string) {
     joinRoom(roomId);
 
     const client = getClient();
+    if (!client) return;
     client.channel(`user_${targetUserId}`).send({
       type: 'broadcast',
       event: 'incoming_call',
@@ -221,11 +224,13 @@ export function useWebRTC(userId: string) {
   const declineCall = () => {
     if (incomingCall) {
       const client = getClient();
-      client.channel(incomingCall.roomId).send({
-        type: 'broadcast',
-        event: 'call_declined',
-        payload: {}
-      });
+      if (client) {
+        client.channel(incomingCall.roomId).send({
+          type: 'broadcast',
+          event: 'call_declined',
+          payload: {}
+        });
+      }
       cleanup();
     }
   };
